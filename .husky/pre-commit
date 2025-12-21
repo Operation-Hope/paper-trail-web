@@ -1,0 +1,2 @@
+pnpm exec pretty-quick --staged
+pnpm exec lint-staged
