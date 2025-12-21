@@ -50,12 +50,14 @@ src/
 ├── services/
 │   └── api.ts              # API service layer
 ├── pages/
-│   ├── PoliticianSearch.tsx
-│   ├── DonorSearch.tsx
-│   └── Feedback.tsx
+│   ├── UnifiedSearch.tsx   # Main search page
+│   └── NotFound.tsx        # 404 page
 ├── components/             # Reusable UI components
 ├── hooks/                  # Custom React hooks
 ├── lib/                    # Utilities and query configuration
+├── utils/                  # Formatting and routing utilities
+├── mocks/                  # MSW mock handlers for development
+├── test/                   # Test utilities and setup
 ├── App.tsx                 # Main app with routing
 └── index.css               # Tailwind CSS imports
 ```
@@ -63,6 +65,7 @@ src/
 ## Code Patterns
 
 ### Using API Services
+
 ```typescript
 import { api } from '../services/api';
 import type { Politician } from '../types/api';
@@ -81,11 +84,13 @@ const searchPoliticians = async (query: string) => {
 ```
 
 ### TypeScript Strict Mode
+
 - All components must have proper types
 - No `any` types allowed
 - Props interfaces required for all components
 
 ### Tailwind CSS
+
 - Use Tailwind classes exclusively
 - No inline styles or CSS modules
 - Tailwind 4 uses CSS-first configuration
@@ -101,21 +106,32 @@ Build output goes to `dist/` directory containing static assets ready for deploy
 ## Available Scripts
 
 - `pnpm run dev` - Start development server
+- `pnpm run dev:mocks` - Start with MSW mock data (no backend needed)
 - `pnpm run build` - Build for production
 - `pnpm run preview` - Preview production build locally
 - `pnpm run lint` - Run ESLint
+- `pnpm run test` - Run tests in watch mode
+- `pnpm run test:run` - Run tests once
+- `pnpm run test:coverage` - Run tests with coverage report
+- `pnpm run type-check` - TypeScript type checking
+- `pnpm run format` - Format code with Prettier
+- `pnpm run format:check` - Check code formatting
+- `pnpm run knip` - Check for unused exports/dependencies
 
-## API Endpoints (7 total)
+## API Endpoints (10 total)
 
 All endpoints are available through the typed `api` service object:
 
 1. `api.searchPoliticians(query)` - Search politicians by name
-2. `api.searchDonors(query)` - Search donors by name
-3. `api.getDonorDonations(donorId)` - Get donations by donor
-4. `api.getPoliticianVotes(politicianId, params)` - Get politician voting record
-5. `api.getDonationSummary(politicianId)` - Get donation summary by industry
-6. `api.getFilteredDonationSummary(politicianId, topic)` - Get filtered donation summary
-7. `api.getBillSubjects()` - Get all bill subjects
+2. `api.getPolitician(politicianId)` - Get a single politician by ID
+3. `api.searchDonors(query)` - Search donors by name
+4. `api.getDonor(donorId)` - Get a single donor by ID
+5. `api.getDonorDonations(donorId, params)` - Get donations by donor
+6. `api.getPoliticianVotes(politicianId, params)` - Get politician voting record
+7. `api.getPoliticianVotesDateRange(politicianId)` - Get date range for politician's votes
+8. `api.getDonationSummary(politicianId)` - Get donation summary by industry
+9. `api.getFilteredDonationSummary(politicianId, topic)` - Get filtered donation summary
+10. `api.getBillSubjects()` - Get all bill subjects
 
 See `src/services/api.ts` for detailed documentation of each endpoint.
 
@@ -124,6 +140,7 @@ See `src/services/api.ts` for detailed documentation of each endpoint.
 We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for development guidelines and code standards.
 
 Before submitting a PR:
+
 - Ensure build passes: `pnpm run build`
 - Verify types: `pnpm run type-check`
 - Run linter: `pnpm run lint`
