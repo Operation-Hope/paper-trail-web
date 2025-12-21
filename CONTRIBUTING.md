@@ -5,6 +5,7 @@ We welcome contributions to CorruptionWatch.us! This document provides guideline
 ## Getting Started
 
 1. **Fork the repository**
+
    ```bash
    # Fork on GitHub, then clone your fork
    git clone git@github.com:YOUR-USERNAME/paper-trail-web.git
@@ -12,11 +13,13 @@ We welcome contributions to CorruptionWatch.us! This document provides guideline
    ```
 
 2. **Install dependencies**
+
    ```bash
    pnpm install
    ```
 
 3. **Start development server**
+
    ```bash
    pnpm run dev
    ```
@@ -27,6 +30,7 @@ We welcome contributions to CorruptionWatch.us! This document provides guideline
 ## Development Workflow
 
 1. **Create a feature branch** from `main`
+
    ```bash
    git checkout -b feature/your-feature-name
    ```
@@ -48,15 +52,41 @@ We welcome contributions to CorruptionWatch.us! This document provides guideline
    - Fill out the PR template completely
    - Request review from maintainers
 
+## Pre-commit Hooks
+
+This project uses [Husky](https://typicode.github.io/husky/) to run automated checks before each commit. When you run `git commit`, the following happens automatically:
+
+1. **ESLint** runs on staged `.ts` and `.tsx` files via `lint-staged`
+   - Fixes auto-fixable issues
+   - Blocks commit if unfixable errors exist
+
+2. **Prettier** formats all staged files via `pretty-quick`
+   - Ensures consistent code formatting
+   - Changes are automatically staged
+
+If the pre-commit hook fails:
+
+- Review the error output
+- Fix any linting errors manually
+- Stage your fixes and commit again
+
+To skip hooks in exceptional cases (not recommended):
+
+```bash
+git commit --no-verify -m "your message"
+```
+
 ## Code Standards
 
 ### TypeScript
+
 - Use TypeScript strict mode
 - No `any` types - use proper typing
 - Define interfaces for all component props
 - Export types from `src/types/` directory
 
 ### React
+
 - Functional components with hooks only
 - Use React 19 features where appropriate
 - Prop drilling is acceptable for 2-3 levels
@@ -64,6 +94,7 @@ We welcome contributions to CorruptionWatch.us! This document provides guideline
 - Use context for global UI state (theme, modals)
 
 ### Styling
+
 - Tailwind CSS only
 - No inline styles or CSS modules
 - Use `cn()` utility for conditional classes
@@ -71,6 +102,7 @@ We welcome contributions to CorruptionWatch.us! This document provides guideline
 - Use shadcn/ui components when available
 
 ### Components
+
 - One component per file
 - Co-locate types with components
 - Use descriptive prop names
@@ -78,6 +110,7 @@ We welcome contributions to CorruptionWatch.us! This document provides guideline
 - Extract reusable logic to custom hooks
 
 ### File Organization
+
 ```
 src/
 ├── components/      # Reusable UI components
@@ -111,6 +144,7 @@ type(scope): description
 ```
 
 **Types:**
+
 - `feat`: New feature
 - `fix`: Bug fix
 - `docs`: Documentation changes
@@ -120,6 +154,7 @@ type(scope): description
 - `chore`: Build process or auxiliary tool changes
 
 **Examples:**
+
 ```
 feat(search): add politician comparison view
 fix(charts): correct donation aggregation logic
