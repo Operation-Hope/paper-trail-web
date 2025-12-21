@@ -10,6 +10,7 @@ export default defineConfig(
     ignores: [
       "dist/**",
       "public/mockServiceWorker.js",
+      "coverage/**",
     ],
   },
   js.configs.recommended,
