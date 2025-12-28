@@ -34,12 +34,23 @@ This starts Vite at http://localhost:5173 with hot module replacement.
 
 ### Backend Integration
 
-The backend API is under active development. When available:
+The app runs in two modes:
 
-1. Clone and run the [paper-trail-api](https://github.com/Operation-Hope/paper-trail-api) on port 5001
-2. The Vite dev server proxies `/api/*` requests to `localhost:5001` (configured in `vite.config.ts`)
+**Mock Mode (Default)** - Uses mock data via MSW:
 
-For now, you can explore the UI components without a running backend.
+```bash
+echo "VITE_ENABLE_MOCKS=true" > .env.development
+pnpm run dev
+```
+
+**Real Backend Mode** - Connects to actual API:
+
+```bash
+echo "VITE_ENABLE_MOCKS=false" > .env.development
+pnpm run dev
+```
+
+The API defaults to `http://localhost:5001`. Set `VITE_API_BASE_URL` to override.
 
 ## Project Structure
 
