@@ -39,7 +39,6 @@ coverage/
 
 # Environment files
 .env
-.env.development
 .env*.local
 
 # Internal tools
