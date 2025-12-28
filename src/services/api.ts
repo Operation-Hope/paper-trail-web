@@ -17,13 +17,13 @@ import type {
 
 async function fetchJSON<T>(url: string, options?: RequestInit): Promise<T> {
   // Get API base URL from environment, with fallback to localhost for development
-const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 
-  (import.meta.env.DEV ? 'http://localhost:5001' : undefined);
+  const apiBaseUrl =
+    import.meta.env.VITE_API_BASE_URL ||
+    (import.meta.env.DEV ? 'http://localhost:5001' : undefined);
 
-if (!apiBaseUrl) {
-  throw new Error('VITE_API_BASE_URL must be set in production');
-}
-    import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001';
+  if (!apiBaseUrl) {
+    throw new Error('VITE_API_BASE_URL must be set in production');
+  }
 
   // Construct absolute URL by prepending API base URL
   const absoluteUrl = `${apiBaseUrl}${url}`;
