@@ -1,52 +1,91 @@
 version: 2
 updates:
-  - package-ecosystem: "npm"
-    directory: "/"
+  - package-ecosystem: 'npm'
+    directory: '/'
     schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "09:00"
-      timezone: "America/Los_Angeles"
+      interval: 'weekly'
+      day: 'monday'
+      time: '09:00'
+      timezone: 'America/Los_Angeles'
     open-pull-requests-limit: 10
     labels:
-      - "dependencies"
-      - "automated"
+      - 'dependencies'
+      - 'automated'
     commit-message:
-      prefix: "chore(deps)"
+      prefix: 'chore(deps)'
     groups:
-      react:
+      react-core:
         patterns:
-          - "react"
-          - "react-dom"
-          - "@types/react"
-          - "@types/react-dom"
-      radix:
+          - 'react'
+          - 'react-dom'
+          - '@types/react'
+          - '@types/react-dom'
+      react-ecosystem:
         patterns:
-          - "@radix-ui/*"
+          - 'react-router-dom'
+          - '@tanstack/react-query'
+          - 'next-themes'
+      radix-ui:
+        patterns:
+          - '@radix-ui/*'
+      ui-utilities:
+        patterns:
+          - 'clsx'
+          - 'class-variance-authority'
+          - 'tailwind-merge'
+          - 'cmdk'
+          - 'lucide-react'
+          - 'sonner'
+      charting:
+        patterns:
+          - 'chart.js'
+          - 'react-chartjs-2'
+      date-handling:
+        patterns:
+          - 'date-fns'
+          - 'react-day-picker'
       testing:
         patterns:
-          - "vitest"
-          - "@testing-library/*"
-          - "jsdom"
-      linting:
+          - 'vitest'
+          - '@vitest/*'
+          - '@testing-library/*'
+          - 'jsdom'
+          - 'msw'
+      linting-formatting:
         patterns:
-          - "eslint*"
-          - "prettier*"
-          - "typescript-eslint"
-      build:
+          - 'eslint'
+          - 'eslint-*'
+          - '@eslint/*'
+          - 'prettier'
+          - 'prettier-*'
+          - 'typescript-eslint'
+          - 'knip'
+          - 'lint-staged'
+          - 'pretty-quick'
+          - 'husky'
+      build-tooling:
         patterns:
-          - "vite"
-          - "@vitejs/*"
-          - "tailwindcss"
-          - "@tailwindcss/*"
+          - 'vite'
+          - '@vitejs/*'
+          - 'tailwindcss'
+          - '@tailwindcss/*'
+          - 'tw-animate-css'
+      typescript:
+        patterns:
+          - 'typescript'
+          - '@types/node'
 
-  - package-ecosystem: "github-actions"
-    directory: "/"
+  - package-ecosystem: 'github-actions'
+    directory: '/'
     schedule:
-      interval: "weekly"
-      day: "monday"
+      interval: 'weekly'
+      day: 'monday'
     labels:
-      - "dependencies"
-      - "github-actions"
+      - 'dependencies'
+      - 'github-actions'
     commit-message:
-      prefix: "chore(ci)"
+      prefix: 'chore(ci)'
+    groups:
+      github-actions:
+        patterns:
+          - '*'
