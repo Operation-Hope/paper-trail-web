@@ -43,3 +43,4 @@ coverage/
 
 # Internal tools
 .conductor/
+.vercel
