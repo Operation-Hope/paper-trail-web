@@ -1,43 +1,41 @@
-/**
- * Politician search results component using React 19 Suspense
- * Fetches and displays politician search results with useSuspenseQuery
- */
 import { useSuspenseQuery } from '@tanstack/react-query';
+import { Users, ChevronRight, MapPin } from 'lucide-react';
 import { api } from '../services/api';
-import { queryKeys } from '../lib/query/keys';
-import { PoliticianCard } from './PoliticianCard';
 import { Card, CardContent } from './ui/card';
-import { Button } from './ui/button';
+import { Badge } from './ui/badge';
 import type { Politician } from '../types/api';
 
 interface PoliticianSearchResultsProps {
   searchQuery: string;
-  comparisonPoliticians: Politician[];
   onSelectPolitician: (politician: Politician) => void;
-  onToggleComparison: (politician: Politician) => void;
-  onClearComparison: () => void;
 }
 
 export function PoliticianSearchResults({
   searchQuery,
-  comparisonPoliticians,
   onSelectPolitician,
-  onToggleComparison,
-  onClearComparison,
 }: PoliticianSearchResultsProps) {
-  // useSuspenseQuery will suspend while loading, showing Suspense fallback
   const { data: politicians } = useSuspenseQuery({
-    queryKey: queryKeys.politicians.search(searchQuery),
+    queryKey: ['politicians', 'search', searchQuery],
     queryFn: () => api.searchPoliticians(searchQuery),
-    staleTime: 5 * 60 * 1000,
   });
 
-  if (politicians.length === 0) {
+  const getPartyInfo = (party: string = "") => {
+    const p = party.trim().toUpperCase();
+    if (p === 'R' || p === 'GOP' || p.startsWith('REP')) {
+      return { label: "R", variant: "destructive" as const };
+    }
+    if (p === 'D' || p.startsWith('DEM')) {
+      return { label: "D", variant: "default" as const };
+    }
+    return { label: p.charAt(0) || "I", variant: "outline" as const };
+  };
+
+  if (!politicians || politicians.length === 0) {
     return (
       <Card>
         <CardContent className="pt-6">
           <div className="text-muted-foreground py-8 text-center">
-            No politicians found matching &quot;{searchQuery}&quot;
+            No politicians found matching "{searchQuery}"
           </div>
         </CardContent>
       </Card>
@@ -45,39 +43,47 @@ export function PoliticianSearchResults({
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold">
-          Found {politicians.length} politician
-          {politicians.length !== 1 ? 's' : ''}
-        </h2>
-        <Button
-          variant="outline"
-          onClick={() => {
-            if (comparisonPoliticians.length > 0) {
-              onClearComparison();
-            }
-          }}
-        >
-          {comparisonPoliticians.length > 0
-            ? `Compare (${comparisonPoliticians.length})`
-            : 'Compare Mode'}
-        </Button>
-      </div>
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {politicians.map((politician) => (
-          <PoliticianCard
-            key={politician.canonical_id}
-            politician={politician}
-            onSelect={onSelectPolitician}
-            onToggleComparison={onToggleComparison}
-            isSelectedForComparison={comparisonPoliticians.some(
-              (p) => p.canonical_id === politician.canonical_id
-            )}
-            comparisonMode={comparisonPoliticians.length > 0}
-          />
-        ))}
-      </div>
+    <div className="grid gap-4">
+      {politicians.map((politician) => {
+        const partyInfo = getPartyInfo(politician.party);
+
+        return (
+          <Card 
+            key={politician.canonical_id} 
+            className="hover:border-primary/50 transition-colors cursor-pointer overflow-hidden group"
+            onClick={() => onSelectPolitician(politician)}
+          >
+            <CardContent className="p-0">
+              <div className="flex items-center p-4 gap-4">
+                <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center shrink-0 group-hover:bg-primary/10 transition-colors">
+                  <Users className="h-6 w-6 text-muted-foreground group-hover:text-primary" />
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="font-bold text-lg truncate">
+                      {politician.full_name}
+                    </h3>
+                    <Badge variant={partyInfo.variant} className="text-[10px] h-4 font-mono px-1.5">
+                      {partyInfo.label}
+                    </Badge>
+                  </div>
+                  
+                  <div className="flex items-center text-sm text-muted-foreground gap-3">
+                    <span className="flex items-center gap-1">
+                      <MapPin className="h-3 w-3" />
+                      {politician.state}
+                    </span>
+                    <span>•</span>
+                    <span className="capitalize">{politician.chamber}</span>
+                  </div>
+                </div>
+                <ChevronRight className="h-5 w-5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })}
     </div>
   );
 }

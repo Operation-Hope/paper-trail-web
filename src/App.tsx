@@ -30,7 +30,6 @@ function AppContent() {
           <Route path="/" element={<UnifiedSearch />} />
           <Route path="/politician" element={<UnifiedSearch />} />
           <Route path="/politician/:id" element={<UnifiedSearch />} />
-          <Route path="/politician/compare" element={<UnifiedSearch />} />
           <Route path="/donor" element={<UnifiedSearch />} />
           <Route path="/donor/:id" element={<UnifiedSearch />} />
           <Route path="*" element={<NotFound />} />

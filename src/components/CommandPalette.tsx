@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Users, DollarSign, Moon, Sun, Home } from 'lucide-react';
+import { Users, DollarSign, Moon, Sun, Home, Activity } from 'lucide-react'; // Added Activity icon
 import {
   CommandDialog,
   CommandEmpty,
@@ -109,6 +109,12 @@ export function CommandPalette() {
     void navigate('/donor');
   }, [navigate]);
 
+  // Added handler for the flowchart
+  const handleNavigateMoneyFlowchart = useCallback(() => {
+    setOpen(false);
+    void navigate('/money-flowchart');
+  }, [navigate]);
+
   return (
     <CommandDialog open={open} onOpenChange={setOpen}>
       <CommandInput
@@ -131,6 +137,11 @@ export function CommandPalette() {
               <CommandItem onSelect={handleNavigateDonorSearch}>
                 <DollarSign className="mr-2 h-4 w-4" />
                 <span>Donor Search</span>
+              </CommandItem>
+              {/* Added Flowchart Navigation Item */}
+              <CommandItem onSelect={handleNavigateMoneyFlowchart}>
+                <Activity className="mr-2 h-4 w-4" />
+                <span>Money Flowchart</span>
               </CommandItem>
             </CommandGroup>
 

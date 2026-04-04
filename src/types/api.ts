@@ -1,7 +1,4 @@
-/**
- * Core Data Models
- * These interfaces define the shape of our data across the app.
- */
+// src/types/api.ts
 
 export interface Politician {
   canonical_id: string;
@@ -10,15 +7,14 @@ export interface Politician {
   full_name: string;
   party: string;
   state: string;
-  seat?: string;
-  photo_url?: string;
+  chamber: string; // <--- ADD THIS LINE
+  // ... keep any other existing properties (like image_url, etc.)
 }
 
 export interface Donor {
   donor_id: string;
   name: string;
-  donor_type: string; // e.g., 'Individual' or 'PAC'
-  employer?: string;
+  donor_type: string;
   state?: string;
-  total_contributions?: number;
+  total_donated: number;
 }
