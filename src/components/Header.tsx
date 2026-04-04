@@ -27,16 +27,7 @@ export default function Header() {
       <div className="container mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 shrink-0">
-              <img
-                src="https://placehold.co/200x50?text=Paper+Trail"
-                alt="TYT Logo"
-                className="h-10 w-10"
-                onError={(e) => {
-                  e.currentTarget.style.visibility = 'hidden';
-                }}
-              />
-            </div>
+            <div className="h-10 w-10 shrink-0"></div>
             <div>
               <h1 className="text-2xl font-bold">Paper Trail</h1>
               <p className="text-xs text-blue-100 dark:text-gray-400">
@@ -65,6 +56,12 @@ export default function Header() {
                 }
               >
                 Donors
+              </NavLink>
+              <NavLink
+                to="/money-flowchart"
+                className="hover:text-primary transition-colors"
+              >
+                Money Flowchart
               </NavLink>
             </nav>
             <button

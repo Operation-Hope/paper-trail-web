@@ -7,6 +7,7 @@ import { CommandPalette } from './components/CommandPalette';
 import { Toaster } from './components/ui/sonner';
 import { ThemeProvider } from './components/providers';
 import './index.css';
+import MoneyFlowchart from './pages/MoneyFlowchart'; // Import the new page
 
 // 2. Create the "engine" for your data fetching
 const queryClient = new QueryClient({
@@ -32,6 +33,12 @@ function AppContent() {
           <Route path="/politician/compare" element={<UnifiedSearch />} />
           <Route path="/donor" element={<UnifiedSearch />} />
           <Route path="/donor/:id" element={<UnifiedSearch />} />
+          <Route path="*" element={<NotFound />} />
+          <Route path="/" element={<UnifiedSearch />} />
+          <Route path="/politician" element={<UnifiedSearch />} />
+          <Route path="/donor" element={<UnifiedSearch />} />
+          <Route path="/money-flowchart" element={<MoneyFlowchart />} />{' '}
+          {/* ADD THIS */}
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
