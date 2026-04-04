@@ -29,7 +29,7 @@ export default function Header() {
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 shrink-0">
               <img
-                src="https://upload.wikimedia.org/wikipedia/commons/thumb/1/1e/The_Young_Turks_logo.svg/200px-The_Young_Turks_logo.svg.png"
+                src="https://placehold.co/200x50?text=Paper+Trail"
                 alt="TYT Logo"
                 className="h-10 w-10"
                 onError={(e) => {
@@ -90,14 +90,14 @@ export default function Header() {
       </div>
       {!disclaimerDismissed && (
         <div className="relative border-t border-yellow-700 bg-yellow-900/50 px-4 py-2 transition-colors dark:border-yellow-700 dark:bg-yellow-900/50">
-          <p className="text-center text-sm text-yellow-300 dark:text-yellow-300 pr-8">
+          <p className="pr-8 text-center text-sm text-yellow-300 dark:text-yellow-300">
             Disclaimer: This data is for informational purposes only. Data
             accuracy is not guaranteed. Please verify all information with
             official sources.
           </p>
           <button
             onClick={handleDismissDisclaimer}
-            className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-yellow-300 transition-colors hover:bg-yellow-800/50 hover:text-yellow-100"
+            className="absolute top-1/2 right-2 -translate-y-1/2 rounded p-1 text-yellow-300 transition-colors hover:bg-yellow-800/50 hover:text-yellow-100"
             aria-label="Dismiss disclaimer"
           >
             <X className="size-4" />

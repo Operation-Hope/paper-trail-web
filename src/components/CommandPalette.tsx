@@ -1,8 +1,3 @@
-/**
- * Global command palette for quick search and navigation
- * Triggered by Cmd+K (Mac) or Ctrl+K (Windows/Linux)
- * Searches politicians and donors, with navigation actions
- */
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Users, DollarSign, Moon, Sun, Home } from 'lucide-react';
@@ -17,7 +12,7 @@ import {
 } from './ui/command';
 import { api } from '../services/api';
 import type { Politician, Donor } from '../types/api';
-import { useTheme } from './providers';
+import { useTheme } from './providers/theme-provider';
 import { buildPoliticianUrl, buildDonorUrl } from '../utils/routing';
 
 export function CommandPalette() {
@@ -83,9 +78,9 @@ export function CommandPalette() {
     (politician: Politician) => {
       setOpen(false);
       setSearch('');
-
-      // Navigate to politician detail URL with minimal history
-      void navigate(buildPoliticianUrl(politician.canonical_id), { replace: true });
+      void navigate(buildPoliticianUrl(politician.canonical_id), {
+        replace: true,
+      });
     },
     [navigate]
   );
@@ -94,8 +89,6 @@ export function CommandPalette() {
     (donor: Donor) => {
       setOpen(false);
       setSearch('');
-
-      // Navigate to donor detail URL with minimal history
       void navigate(buildDonorUrl(donor.donor_id), { replace: true });
     },
     [navigate]
@@ -128,16 +121,15 @@ export function CommandPalette() {
           {isLoading ? 'Searching...' : 'No results found.'}
         </CommandEmpty>
 
-        {/* Navigation Actions */}
         {!search && (
           <>
             <CommandGroup heading="Navigation">
               <CommandItem onSelect={handleNavigateHome}>
-                <Home />
+                <Home className="mr-2 h-4 w-4" />
                 <span>Politician Search</span>
               </CommandItem>
               <CommandItem onSelect={handleNavigateDonorSearch}>
-                <DollarSign />
+                <DollarSign className="mr-2 h-4 w-4" />
                 <span>Donor Search</span>
               </CommandItem>
             </CommandGroup>
@@ -146,57 +138,54 @@ export function CommandPalette() {
 
             <CommandGroup heading="Actions">
               <CommandItem onSelect={handleToggleTheme}>
-                {theme === 'dark' ? <Sun /> : <Moon />}
+                {theme === 'dark' ? (
+                  <Sun className="mr-2 h-4 w-4" />
+                ) : (
+                  <Moon className="mr-2 h-4 w-4" />
+                )}
                 <span>Toggle {theme === 'dark' ? 'Light' : 'Dark'} Mode</span>
               </CommandItem>
             </CommandGroup>
           </>
         )}
 
-        {/* Politicians */}
         {politicians.length > 0 && (
-          <>
-            <CommandGroup heading="Politicians">
-              {politicians.map((politician) => (
-                <CommandItem
-                  key={politician.canonical_id}
-                  value={`${politician.first_name} ${politician.last_name}`}
-                  onSelect={() => { handleSelectPolitician(politician); }}
-                >
-                  <Users />
-                  <div className="flex flex-col">
-                    <span>
-                      {politician.first_name} {politician.last_name}
-                    </span>
-                    <span className="text-muted-foreground text-xs">
-                      {politician.party} • {politician.state}
-                      {politician.seat && ` • ${politician.seat}`}
-                    </span>
-                  </div>
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </>
+          <CommandGroup heading="Politicians">
+            {politicians.map((politician) => (
+              <CommandItem
+                key={politician.canonical_id}
+                value={`${politician.first_name} ${politician.last_name}`}
+                onSelect={() => handleSelectPolitician(politician)}
+              >
+                <Users className="mr-2 h-4 w-4" />
+                <div className="flex flex-col">
+                  <span>
+                    {politician.first_name} {politician.last_name}
+                  </span>
+                  <span className="text-muted-foreground text-xs">
+                    {politician.party} • {politician.state}
+                  </span>
+                </div>
+              </CommandItem>
+            ))}
+          </CommandGroup>
         )}
 
-        {/* Donors */}
         {donors.length > 0 && (
           <>
-            {politicians.length > 0 && <CommandSeparator />}
+            <CommandSeparator />
             <CommandGroup heading="Donors">
               {donors.map((donor) => (
                 <CommandItem
                   key={donor.donor_id}
                   value={donor.name}
-                  onSelect={() => { handleSelectDonor(donor); }}
+                  onSelect={() => handleSelectDonor(donor)}
                 >
-                  <DollarSign />
+                  <DollarSign className="mr-2 h-4 w-4" />
                   <div className="flex flex-col">
                     <span>{donor.name}</span>
                     <span className="text-muted-foreground text-xs">
-                      {donor.donor_type}
-                      {donor.employer && ` • ${donor.employer}`}
-                      {donor.state && ` • ${donor.state}`}
+                      {donor.donor_type} {donor.state && `• ${donor.state}`}
                     </span>
                   </div>
                 </CommandItem>
