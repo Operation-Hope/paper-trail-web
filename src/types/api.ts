@@ -1,5 +1,3 @@
-// src/types/api.ts
-
 export interface Politician {
   canonical_id: string;
   first_name: string;
@@ -7,26 +5,32 @@ export interface Politician {
   full_name: string;
   party: string;
   state: string;
-  chamber: string; 
+  district: string;
+  is_active: boolean;
+  bioguide_id: string;
+  icpsr_id: number;
+  fec_candidate_id?: string;
+  nominate_dim1: number;
+  nominate_dim2: number;
+  chamber: 'House' | 'Senate';
 }
 
-export interface Donor {
-  donor_id: string;
-  name: string;
-  donor_type: string;
-  state?: string;
-  total_donated: number;
+export interface Vote {
+  vote_id: string;
+  vote_value: string;
+  bill_number: string;
+  bill_description: string;
+  vote_date: string;
+  topics: string[];
 }
 
-// --- ADD THIS SECTION BELOW ---
-export interface CongressSession {
-  congress: number;
-  start: string;
-  end: string;
+export interface VoteResponse {
+  votes: Vote[];
+  pagination: { currentPage: number; totalPages: number; totalVotes: number };
 }
 
 export interface VoteDateRangeResponse {
   earliest_vote: string;
   latest_vote: string;
-  congress_sessions: CongressSession[];
+  congress_sessions: { congress: number; start: string; end: string }[];
 }

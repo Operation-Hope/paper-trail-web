@@ -1,17 +1,19 @@
 import { http, HttpResponse, delay } from 'msw';
-import type { Politician } from '../../types/api';
-import { MOCK_POLITICIANS } from '../data/factories/politician';
+import {
+  getLivePoliticians,
+  getLivePoliticianById,
+  getVotesForPolitician,
+} from '../data/factories/vote';
 import { mockDelay } from '../utils/delay';
 
-// Explicitly typing 'p' as Politician for the lookup map
-const politicianMap = new Map<string, Politician>(
-  (MOCK_POLITICIANS as Politician[]).map((p: Politician) => [p.canonical_id, p])
-);
-
+/**
+ * MSW Handlers for Politician-related API calls.
+ * These are now thin wrappers around the DuckDB-Wasm engine.
+ */
 export const politicianHandlers = [
   /**
-   * Handler for searching politicians by name.
-   * Responds to: GET /api/politicians/search?name=...
+   * LIVE SEARCH: Queries the Parquet file via DuckDB
+   * GET /api/politicians/search?name=...
    */
   http.get('*/api/politicians/search', async ({ request }) => {
     await delay(mockDelay());
@@ -21,30 +23,53 @@ export const politicianHandlers = [
     // Return empty if search term is too short
     if (name.length < 2) return HttpResponse.json([]);
 
-    const lowerName = name.toLowerCase();
-    const results = (MOCK_POLITICIANS as Politician[]).filter(
-      (p: Politician) =>
-        p.full_name.toLowerCase().includes(lowerName) ||
-        p.last_name.toLowerCase().includes(lowerName)
-    );
-
-    return HttpResponse.json(results);
+    try {
+      const results = await getLivePoliticians(name);
+      return HttpResponse.json(results);
+    } catch {
+      return new HttpResponse(null, { status: 500 });
+    }
   }),
 
   /**
-   * Handler for fetching a single politician's details.
-   * Responds to: GET /api/politician/:id
+   * LIVE DETAIL: Gets a single member from the Parquet file
+   * GET /api/politician/:id
    */
   http.get('*/api/politician/:id', async ({ params }) => {
     await delay(mockDelay());
     const id = params.id as string;
-    const politician = politicianMap.get(id);
 
-    return politician
-      ? HttpResponse.json(politician)
-      : new HttpResponse(null, { status: 404 });
+    try {
+      const politician = await getLivePoliticianById(id);
+      return politician
+        ? HttpResponse.json(politician)
+        : new HttpResponse(null, { status: 404 });
+    } catch {
+      return new HttpResponse(null, { status: 500 });
+    }
   }),
 
-  // Note: If you add handlers for votes or donations later,
-  // re-import the necessary factory functions then!
+  /**
+   * LIVE VOTES: Fetches voting history for a politician
+   * GET /api/politician/:id/votes
+   */
+  http.get('*/api/politician/:id/votes', async ({ params, request }) => {
+    const url = new URL(request.url);
+    const page = url.searchParams.get('page') || '1';
+    const search = url.searchParams.get('search') || '';
+
+    try {
+      // First find the member to get their numeric ICPSR ID
+      const politician = await getLivePoliticianById(params.id as string);
+      if (!politician) return new HttpResponse(null, { status: 404 });
+
+      const data = await getVotesForPolitician(politician.icpsr_id, {
+        page,
+        search,
+      });
+      return HttpResponse.json(data);
+    } catch {
+      return new HttpResponse(null, { status: 500 });
+    }
+  }),
 ];

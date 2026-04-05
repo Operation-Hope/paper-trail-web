@@ -37,9 +37,10 @@ coverage/
 # Claude local settings
 .claude/settings.local.json
 
-# Environment files
 .env
-.env*.local
+.env.development
+.env.local
+.env.*.local
 
 # Internal tools
 .conductor/
