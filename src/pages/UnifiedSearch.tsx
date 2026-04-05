@@ -34,8 +34,8 @@ export default function UnifiedSearch() {
   // Determine active tab from URL path
   const activeTab: SearchType = location.pathname.startsWith('/donor')
     ? 'donor'
-    : location.pathname.startsWith('/money-flowchart') 
-      ? 'flowchart' 
+    : location.pathname.startsWith('/money-flowchart')
+      ? 'flowchart'
       : 'politician';
 
   // Politician search state hook
@@ -90,7 +90,13 @@ export default function UnifiedSearch() {
   useEffect(() => {
     if (activeTab === 'politician' && selectedDonor) clearDonorSelection();
     if (activeTab === 'donor' && selectedPolitician) clearPoliticianSelection();
-  }, [activeTab, selectedDonor, selectedPolitician, clearDonorSelection, clearPoliticianSelection]);
+  }, [
+    activeTab,
+    selectedDonor,
+    selectedPolitician,
+    clearDonorSelection,
+    clearPoliticianSelection,
+  ]);
 
   // Hydrate state from URL on load or path change
   useEffect(() => {
@@ -149,9 +155,12 @@ export default function UnifiedSearch() {
     return (
       <div className="container mx-auto px-4 py-8">
         <ErrorBoundary>
-          <PoliticianDetails 
-            politician={selectedPolitician} 
-            onClose={() => { clearPoliticianSelection(); navigateBack(); }} 
+          <PoliticianDetails
+            politician={selectedPolitician}
+            onClose={() => {
+              clearPoliticianSelection();
+              navigateBack();
+            }}
           />
         </ErrorBoundary>
       </div>
@@ -163,9 +172,12 @@ export default function UnifiedSearch() {
     return (
       <div className="container mx-auto px-4 py-8">
         <ErrorBoundary>
-          <DonorDetails 
-            donor={selectedDonor} 
-            onClose={() => { clearDonorSelection(); navigateBack(); }} 
+          <DonorDetails
+            donor={selectedDonor}
+            onClose={() => {
+              clearDonorSelection();
+              navigateBack();
+            }}
           />
           <ContributionHistory donorId={selectedDonor.donor_id} />
         </ErrorBoundary>
@@ -189,15 +201,18 @@ export default function UnifiedSearch() {
             {/* Politician Search Bar */}
             <TabsContent value="politician" className="mt-0 space-y-4">
               <p className="text-muted-foreground text-sm">
-                Find politicians and explore their voting records and campaign donations.
+                Search for a politician by first or last name...
               </p>
               <form onSubmit={handlePoliticianSearch} className="flex gap-2">
-                <Input 
-                  placeholder="Enter politician name..." 
-                  value={politicianInput} 
-                  onChange={(e) => setPoliticianInput(e.target.value)} 
+                <Input
+                  placeholder="Enter politician name..."
+                  value={politicianInput}
+                  onChange={(e) => setPoliticianInput(e.target.value)}
                 />
-                <Button type="submit" disabled={isPoliticianLoading || politicianInput.length < 2}>
+                <Button
+                  type="submit"
+                  disabled={isPoliticianLoading || politicianInput.length < 2}
+                >
                   {isPoliticianLoading ? 'Searching...' : 'Search'}
                 </Button>
               </form>
@@ -206,15 +221,19 @@ export default function UnifiedSearch() {
             {/* Donor Search Bar */}
             <TabsContent value="donor" className="mt-0 space-y-4">
               <p className="text-muted-foreground text-sm">
-                Find donors and explore their contribution history to politicians.
+                Find donors and explore their contribution history to
+                politicians.
               </p>
               <form onSubmit={handleDonorSearch} className="flex gap-2">
-                <Input 
-                  placeholder="Enter donor name..." 
-                  value={donorInput} 
-                  onChange={(e) => setDonorInput(e.target.value)} 
+                <Input
+                  placeholder="Enter donor name..."
+                  value={donorInput}
+                  onChange={(e) => setDonorInput(e.target.value)}
                 />
-                <Button type="submit" disabled={isDonorSearching || donorInput.length < 3}>
+                <Button
+                  type="submit"
+                  disabled={isDonorSearching || donorInput.length < 3}
+                >
                   {isDonorSearching ? 'Searching...' : 'Search'}
                 </Button>
               </form>
@@ -226,10 +245,16 @@ export default function UnifiedSearch() {
         <TabsContent value="politician">
           {politicianQuery.length >= 2 && (
             <ErrorBoundary>
-              <Suspense fallback={<div className="text-center py-8">Loading politicians...</div>}>
-                <PoliticianSearchResults 
-                  searchQuery={politicianQuery} 
-                  onSelectPolitician={(p) => navigateToEntity(p.canonical_id, 'politician')} 
+              <Suspense
+                fallback={
+                  <div className="py-8 text-center">Loading politicians...</div>
+                }
+              >
+                <PoliticianSearchResults
+                  searchQuery={politicianQuery}
+                  onSelectPolitician={(p) =>
+                    navigateToEntity(p.canonical_id, 'politician')
+                  }
                 />
               </Suspense>
             </ErrorBoundary>
@@ -239,10 +264,14 @@ export default function UnifiedSearch() {
         <TabsContent value="donor">
           {donorQuery.length >= 3 && (
             <ErrorBoundary>
-              <Suspense fallback={<div className="text-center py-8">Loading donors...</div>}>
-                <DonorSearchResults 
-                  searchQuery={donorQuery} 
-                  onSelectDonor={(d) => navigateToEntity(d.donor_id, 'donor')} 
+              <Suspense
+                fallback={
+                  <div className="py-8 text-center">Loading donors...</div>
+                }
+              >
+                <DonorSearchResults
+                  searchQuery={donorQuery}
+                  onSelectDonor={(d) => navigateToEntity(d.donor_id, 'donor')}
                 />
               </Suspense>
             </ErrorBoundary>
