@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Users, DollarSign, Moon, Sun, Home, Activity } from 'lucide-react'; // Added Activity icon
+import { Users, Moon, Sun, Home, Activity } from 'lucide-react';
 import {
   CommandDialog,
   CommandEmpty,
@@ -38,7 +38,7 @@ export function CommandPalette() {
     };
   }, []);
 
-  // Search politicians and donors when search term changes
+  // Search politicians only when search term changes
   useEffect(() => {
     const searchData = async () => {
       if (search.length < 2) {
@@ -48,13 +48,10 @@ export function CommandPalette() {
 
       setIsLoading(true);
       try {
-        const [politicianResults] = await Promise.all([
-          api.searchPoliticians(search).catch(() => []),
-          search.length >= 3
-            ? api.searchDonors(search).catch(() => [])
-            : Promise.resolve([]),
-        ]);
-
+        // Removed the Donor API call and Promise.all to prevent 2305 errors
+        const politicianResults = await api
+          .searchPoliticians(search)
+          .catch(() => []);
         setPoliticians(politicianResults.slice(0, 5));
       } catch (error) {
         console.error('Command palette search error:', error);
@@ -92,12 +89,6 @@ export function CommandPalette() {
     void navigate('/politician');
   }, [navigate]);
 
-  const handleNavigateDonorSearch = useCallback(() => {
-    setOpen(false);
-    void navigate('/donor');
-  }, [navigate]);
-
-  // Added handler for the flowchart
   const handleNavigateMoneyFlowchart = useCallback(() => {
     setOpen(false);
     void navigate('/money-flowchart');
@@ -106,7 +97,7 @@ export function CommandPalette() {
   return (
     <CommandDialog open={open} onOpenChange={setOpen}>
       <CommandInput
-        placeholder="Search politicians, donors, or type a command..."
+        placeholder="Search politicians or type a command..."
         value={search}
         onValueChange={setSearch}
       />
@@ -122,11 +113,6 @@ export function CommandPalette() {
                 <Home className="mr-2 h-4 w-4" />
                 <span>Politician Search</span>
               </CommandItem>
-              <CommandItem onSelect={handleNavigateDonorSearch}>
-                <DollarSign className="mr-2 h-4 w-4" />
-                <span>Donor Search</span>
-              </CommandItem>
-              {/* Added Flowchart Navigation Item */}
               <CommandItem onSelect={handleNavigateMoneyFlowchart}>
                 <Activity className="mr-2 h-4 w-4" />
                 <span>Money Flowchart</span>
@@ -154,7 +140,7 @@ export function CommandPalette() {
               <CommandItem
                 key={politician.canonical_id}
                 value={`${politician.first_name} ${politician.last_name}`}
-                onSelect={() => handleSelectPolitician(politician)}
+                onSelect={() => { handleSelectPolitician(politician); }}
               >
                 <Users className="mr-2 h-4 w-4" />
                 <div className="flex flex-col">
