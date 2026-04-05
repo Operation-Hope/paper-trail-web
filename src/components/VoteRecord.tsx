@@ -64,7 +64,6 @@ const VoteTable = ({
           <tr>
             <th className="px-4 py-3 font-medium">Date</th>
             <th className="px-4 py-3 font-medium">Bill</th>
-            <th className="px-4 py-3 font-medium">Description</th>
             <th className="px-4 py-3 text-center font-medium">Vote</th>
           </tr>
         </thead>
@@ -79,12 +78,6 @@ const VoteTable = ({
               </td>
               <td className="text-primary px-4 py-4 font-mono font-bold">
                 {vote.bill_number}
-              </td>
-              <td
-                className="max-w-md truncate px-4 py-4"
-                title={vote.bill_description}
-              >
-                {vote.bill_description}
               </td>
               <td className="px-4 py-4 text-center">
                 <VoteBadge value={vote.vote_value} />
@@ -107,14 +100,14 @@ const VoteBadge = ({ value }: { value: string }) => {
         </Badge>
       );
     case 'Nay':
-      return (
-        <Badge
-          variant="destructive"
-          className="border-red-200 bg-red-500/10 text-red-600 hover:bg-red-500/20"
-        >
-          <XCircle className="mr-1 h-3 w-3" /> Nay
-        </Badge>
-      );
+  return (
+    <Badge
+      /* Changed bg-red-500/10 to bg-red-200 and text to red-900 for high contrast */
+      className="border-red-300 bg-red-200 text-red-900 hover:bg-red-300 transition-colors"
+    >
+      <XCircle className="mr-1 h-3 w-3" /> Nay
+    </Badge>
+  );
     default:
       return (
         <Badge variant="secondary">
@@ -164,13 +157,13 @@ export function VoteRecord({ politicianId }: VoteRecordProps) {
         <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
           <CardTitle className="flex items-center gap-2 text-xl">
             <Calendar className="text-primary h-5 w-5" />
-            Legislative Voting Record
+            Voting Record
           </CardTitle>
 
           <div className="relative w-full md:w-72">
             <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
             <Input
-              placeholder="Search bills or topics..."
+              placeholder="Search bill ID..."
               className="pl-9"
               value={search}
               onChange={(e) => {
