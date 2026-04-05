@@ -5,12 +5,7 @@
 import { useEffect, useState, Suspense } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import {
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  TabsContent,
-} from '../components/ui/tabs';
+import { Tabs, TabsContent } from '../components/ui/tabs';
 import { Card, CardContent, CardHeader } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -190,22 +185,13 @@ export default function UnifiedSearch() {
     <div className="container mx-auto px-4 py-8">
       <Tabs value={activeTab} onValueChange={handleTabChange}>
         <Card className="mb-8">
-          <CardHeader>
-            <TabsList className="grid w-full max-w-[600px] grid-cols-3">
-              <TabsTrigger value="politician">Search Politicians</TabsTrigger>
-              <TabsTrigger value="donor">Search Donors</TabsTrigger>
-              <TabsTrigger value="flowchart">Money Flowchart</TabsTrigger>
-            </TabsList>
-          </CardHeader>
+          <CardHeader></CardHeader>
           <CardContent>
             {/* Politician Search Bar */}
             <TabsContent value="politician" className="mt-0 space-y-4">
-              <p className="text-muted-foreground text-sm">
-                Search for a politician by first or last name...
-              </p>
               <form onSubmit={handlePoliticianSearch} className="flex gap-2">
                 <Input
-                  placeholder="Enter politician name..."
+                  placeholder="Enter politician first name or last name..."
                   value={politicianInput}
                   onChange={(e) => setPoliticianInput(e.target.value)}
                 />

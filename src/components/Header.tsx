@@ -48,16 +48,6 @@ export default function Header() {
                 Politicians
               </NavLink>
               <NavLink
-                to="/donor"
-                className={({ isActive }) =>
-                  isActive
-                    ? 'font-bold underline underline-offset-4'
-                    : 'underline-offset-4 hover:underline'
-                }
-              >
-                Donors
-              </NavLink>
-              <NavLink
                 to="/money-flowchart"
                 className="hover:text-primary transition-colors"
               >

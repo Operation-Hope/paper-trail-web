@@ -11,15 +11,14 @@ import {
   CommandSeparator,
 } from './ui/command';
 import { api } from '../services/api';
-import type { Politician, Donor } from '../types/api';
+import type { Politician } from '../types/api';
 import { useTheme } from './providers/theme-provider';
-import { buildPoliticianUrl, buildDonorUrl } from '../utils/routing';
+import { buildPoliticianUrl } from '../utils/routing';
 
 export function CommandPalette() {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [politicians, setPoliticians] = useState<Politician[]>([]);
-  const [donors, setDonors] = useState<Donor[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const { setTheme, theme } = useTheme();
@@ -44,13 +43,12 @@ export function CommandPalette() {
     const searchData = async () => {
       if (search.length < 2) {
         setPoliticians([]);
-        setDonors([]);
         return;
       }
 
       setIsLoading(true);
       try {
-        const [politicianResults, donorResults] = await Promise.all([
+        const [politicianResults] = await Promise.all([
           api.searchPoliticians(search).catch(() => []),
           search.length >= 3
             ? api.searchDonors(search).catch(() => [])
@@ -58,7 +56,6 @@ export function CommandPalette() {
         ]);
 
         setPoliticians(politicianResults.slice(0, 5));
-        setDonors(donorResults.slice(0, 5));
       } catch (error) {
         console.error('Command palette search error:', error);
       } finally {
@@ -81,15 +78,6 @@ export function CommandPalette() {
       void navigate(buildPoliticianUrl(politician.canonical_id), {
         replace: true,
       });
-    },
-    [navigate]
-  );
-
-  const handleSelectDonor = useCallback(
-    (donor: Donor) => {
-      setOpen(false);
-      setSearch('');
-      void navigate(buildDonorUrl(donor.donor_id), { replace: true });
     },
     [navigate]
   );
@@ -180,29 +168,6 @@ export function CommandPalette() {
               </CommandItem>
             ))}
           </CommandGroup>
-        )}
-
-        {donors.length > 0 && (
-          <>
-            <CommandSeparator />
-            <CommandGroup heading="Donors">
-              {donors.map((donor) => (
-                <CommandItem
-                  key={donor.donor_id}
-                  value={donor.name}
-                  onSelect={() => handleSelectDonor(donor)}
-                >
-                  <DollarSign className="mr-2 h-4 w-4" />
-                  <div className="flex flex-col">
-                    <span>{donor.name}</span>
-                    <span className="text-muted-foreground text-xs">
-                      {donor.donor_type} {donor.state && `• ${donor.state}`}
-                    </span>
-                  </div>
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </>
         )}
       </CommandList>
     </CommandDialog>
