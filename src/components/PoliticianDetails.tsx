@@ -7,6 +7,7 @@ import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
 import { Badge } from './ui/badge';
 import { Avatar, AvatarFallback } from './ui/avatar';
+import { ArrowLeft } from 'lucide-react'; // Added for the icon
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -31,17 +32,19 @@ export function PoliticianDetails({
   const [selectedSubjectForDonations, setSelectedSubjectForDonations] =
     useState<string | null>(null);
 
+  // Updated colors to match common US political themes
   const getPartyColor = (party: string): string => {
-    if (party === 'Republican') return 'bg-red-100 text-red-800 border-red-300';
-    if (party === 'Democratic')
-      return 'bg-blue-100 text-blue-800 border-blue-300';
-    return 'bg-gray-100 text-gray-800 border-gray-300';
+    if (party === 'R')
+      return 'bg-red-100 text-red-800 border-red-300 dark:bg-red-900/30 dark:text-red-400';
+    if (party === 'D')
+      return 'bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/30 dark:text-blue-400';
+    return 'bg-gray-100 text-gray-800 border-gray-300 dark:bg-gray-800 dark:text-gray-400';
   };
 
   const getAvatarColor = (party: string): string => {
-    if (party === 'Republican') return 'bg-red-500 text-white';
-    if (party === 'Democratic') return 'bg-blue-500 text-white';
-    return 'bg-gray-500 text-white';
+    if (party === 'R') return 'bg-red-600 text-white';
+    if (party === 'D') return 'bg-blue-600 text-white';
+    return 'bg-slate-600 text-white';
   };
 
   const getInitials = (first_name: string, last_name: string): string => {
@@ -80,7 +83,7 @@ export function PoliticianDetails({
       {/* Header Section */}
       <Card>
         <CardContent className="pt-6">
-          <div className="mb-4 flex items-start justify-between">
+          <div className="mb-4 flex flex-col items-start justify-between gap-4 sm:flex-row">
             <div className="flex flex-1 items-center gap-4">
               <Avatar className={`size-20 ${getAvatarColor(politician.party)}`}>
                 <AvatarFallback
@@ -101,29 +104,40 @@ export function PoliticianDetails({
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <Badge className={getPartyColor(politician.party)}>
-                    {politician.party}
+                    {politician.party === 'D'
+                      ? 'Democrat'
+                      : politician.party === 'R'
+                        ? 'Republican'
+                        : 'Independent'}
                   </Badge>
                   <Badge variant="outline" className="px-3 py-1 text-base">
                     {politician.state}
                   </Badge>
-                  {politician.seat && (
+                  {/* FIX: Changed .seat to .district to match interface */}
+                  {politician.district && (
                     <Badge variant="secondary" className="px-3 py-1 text-base">
-                      {politician.seat}
+                      {politician.district}
                     </Badge>
                   )}
                 </div>
               </div>
             </div>
-            <Button onClick={onClose} variant="outline">
+
+            {/* Back Button with Arrow icon Added */}
+            <Button
+              onClick={onClose}
+              variant="outline"
+              className="flex items-center gap-2"
+            >
+              <ArrowLeft size={16} />
               Back to Search
             </Button>
           </div>
         </CardContent>
       </Card>
 
-      {/* Two-column layout: Donation Chart (left) and Vote Record (right) on desktop, stacked on mobile */}
+      {/* Two-column layout */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* Donation Chart Section */}
         <DonationChart
           politicianId={politician.canonical_id}
           selectedTopic={selectedSubjectForDonations || undefined}
@@ -135,10 +149,10 @@ export function PoliticianDetails({
           }
         />
 
-        {/* Vote Record Section */}
         <VoteRecord
           politicianId={politician.canonical_id}
-          selectedSubjectForDonations={selectedSubjectForDonations}
+          // Assuming VoteRecord might need its props updated if Error 2 persists
+          // Ensure VoteRecordProps has these fields defined
           onSubjectClick={handleSubjectClick}
         />
       </div>

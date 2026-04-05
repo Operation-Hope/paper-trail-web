@@ -20,6 +20,7 @@ import type { VoteResponse, Vote } from '@/types/api';
 
 interface VoteRecordProps {
   politicianId: string;
+  onSubjectClick?: (subject: string | null) => void;
 }
 
 // --- SUB-COMPONENT: VOTE TABLE ---
