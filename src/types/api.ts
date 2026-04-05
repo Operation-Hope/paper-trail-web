@@ -7,8 +7,7 @@ export interface Politician {
   full_name: string;
   party: string;
   state: string;
-  chamber: string; // <--- ADD THIS LINE
-  // ... keep any other existing properties (like image_url, etc.)
+  chamber: string; 
 }
 
 export interface Donor {
@@ -17,4 +16,17 @@ export interface Donor {
   donor_type: string;
   state?: string;
   total_donated: number;
+}
+
+// --- ADD THIS SECTION BELOW ---
+export interface CongressSession {
+  congress: number;
+  start: string;
+  end: string;
+}
+
+export interface VoteDateRangeResponse {
+  earliest_vote: string;
+  latest_vote: string;
+  congress_sessions: CongressSession[];
 }

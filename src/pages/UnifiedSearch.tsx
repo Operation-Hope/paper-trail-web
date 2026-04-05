@@ -24,7 +24,6 @@ import { DonorDetails } from '../components/DonorDetails';
 import { ContributionHistory } from '../components/ContributionHistory';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { api } from '../services/api';
-import type { Politician, Donor } from '../types/api';
 
 type SearchType = 'politician' | 'donor' | 'flowchart';
 
@@ -32,34 +31,32 @@ export default function UnifiedSearch() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Determine active tab from URL
+  // Determine active tab from URL path
   const activeTab: SearchType = location.pathname.startsWith('/donor')
     ? 'donor'
-    : 'politician';
+    : location.pathname.startsWith('/money-flowchart') 
+      ? 'flowchart' 
+      : 'politician';
 
-  // Politician search state
+  // Politician search state hook
   const politicianSearch = usePoliticianSearch();
   const {
     query: politicianQuery,
     setQuery: setPoliticianQuery,
-    politicians,
     selectedPolitician,
     isLoading: isPoliticianLoading,
-    error: politicianError,
     search: searchPoliticians,
     selectPolitician,
     clearSelection: clearPoliticianSelection,
   } = politicianSearch;
 
-  // Donor search state
+  // Donor search state hook
   const donorSearch = useDonorSearch();
   const {
     query: donorQuery,
     setQuery: setDonorQuery,
-    donors,
     selectedDonor,
     isSearching: isDonorSearching,
-    searchError: donorSearchError,
     search: searchDonors,
     selectDonor,
     clearSelection: clearDonorSelection,
@@ -73,32 +70,29 @@ export default function UnifiedSearch() {
     navigateBack,
   } = useRouteState();
 
-  // Local input state
+  // Local input state (debounced sync via useEffect below)
   const [politicianInput, setPoliticianInput] = useState(politicianQuery);
   const [donorInput, setDonorInput] = useState(donorQuery);
 
   useEffect(() => setPoliticianInput(politicianQuery), [politicianQuery]);
   useEffect(() => setDonorInput(donorQuery), [donorQuery]);
 
-  // Handle tab changes including navigation to standalone pages
+  // Handle tab changes with explicit navigation
   const handleTabChange = (value: string) => {
     if (value === 'flowchart') {
       void navigate('/money-flowchart');
-      return;
+    } else {
+      void navigate(`/${value}`);
     }
-    void navigate(`/${value}`);
   };
 
-  // Clear alternate results when switching tabs
+  // Clear selections when switching context
   useEffect(() => {
-    if (activeTab === 'politician') {
-      if (selectedDonor) clearDonorSelection();
-    } else {
-      if (selectedPolitician) clearPoliticianSelection();
-    }
-  }, [activeTab]);
+    if (activeTab === 'politician' && selectedDonor) clearDonorSelection();
+    if (activeTab === 'donor' && selectedPolitician) clearPoliticianSelection();
+  }, [activeTab, selectedDonor, selectedPolitician, clearDonorSelection, clearPoliticianSelection]);
 
-  // Hydrate state from URL
+  // Hydrate state from URL on load or path change
   useEffect(() => {
     const loadFromUrl = async () => {
       if (activeTab === 'politician') {
@@ -114,7 +108,7 @@ export default function UnifiedSearch() {
           setPoliticianQuery(searchQuery);
           void searchPoliticians(searchQuery);
         }
-      } else {
+      } else if (activeTab === 'donor') {
         if (entityId) {
           try {
             const fetched = await api.getDonor(entityId);
@@ -132,7 +126,6 @@ export default function UnifiedSearch() {
     void loadFromUrl();
   }, [entityId, searchQuery, activeTab]);
 
-  // Handlers
   const handlePoliticianSearch = async (e?: React.FormEvent) => {
     e?.preventDefault();
     if (politicianInput.length >= 2) {
@@ -149,24 +142,38 @@ export default function UnifiedSearch() {
     }
   };
 
-  // View logic: Details view vs Search view
+  // --- RENDERING LOGIC ---
+
+  // 1. Details View (Politician)
   if (activeTab === 'politician' && selectedPolitician) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <PoliticianDetails politician={selectedPolitician} onClose={() => { clearPoliticianSelection(); navigateBack(); }} />
+        <ErrorBoundary>
+          <PoliticianDetails 
+            politician={selectedPolitician} 
+            onClose={() => { clearPoliticianSelection(); navigateBack(); }} 
+          />
+        </ErrorBoundary>
       </div>
     );
   }
 
+  // 2. Details View (Donor)
   if (activeTab === 'donor' && selectedDonor) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <DonorDetails donor={selectedDonor} onClose={() => { clearDonorSelection(); navigateBack(); }} />
-        <ContributionHistory donorId={selectedDonor.donor_id} />
+        <ErrorBoundary>
+          <DonorDetails 
+            donor={selectedDonor} 
+            onClose={() => { clearDonorSelection(); navigateBack(); }} 
+          />
+          <ContributionHistory donorId={selectedDonor.donor_id} />
+        </ErrorBoundary>
       </div>
     );
   }
 
+  // 3. Search/Tabs View
   return (
     <div className="container mx-auto px-4 py-8">
       <Tabs value={activeTab} onValueChange={handleTabChange}>
@@ -179,6 +186,7 @@ export default function UnifiedSearch() {
             </TabsList>
           </CardHeader>
           <CardContent>
+            {/* Politician Search Bar */}
             <TabsContent value="politician" className="mt-0 space-y-4">
               <p className="text-muted-foreground text-sm">
                 Find politicians and explore their voting records and campaign donations.
@@ -195,6 +203,7 @@ export default function UnifiedSearch() {
               </form>
             </TabsContent>
 
+            {/* Donor Search Bar */}
             <TabsContent value="donor" className="mt-0 space-y-4">
               <p className="text-muted-foreground text-sm">
                 Find donors and explore their contribution history to politicians.
@@ -213,25 +222,30 @@ export default function UnifiedSearch() {
           </CardContent>
         </Card>
 
+        {/* Search Results Display Area */}
         <TabsContent value="politician">
           {politicianQuery.length >= 2 && (
-            <Suspense fallback={<div className="text-center py-8">Loading politicians...</div>}>
-              <PoliticianSearchResults 
-                searchQuery={politicianQuery} 
-                onSelectPolitician={(p) => navigateToEntity(p.canonical_id, 'politician')} 
-              />
-            </Suspense>
+            <ErrorBoundary>
+              <Suspense fallback={<div className="text-center py-8">Loading politicians...</div>}>
+                <PoliticianSearchResults 
+                  searchQuery={politicianQuery} 
+                  onSelectPolitician={(p) => navigateToEntity(p.canonical_id, 'politician')} 
+                />
+              </Suspense>
+            </ErrorBoundary>
           )}
         </TabsContent>
 
         <TabsContent value="donor">
           {donorQuery.length >= 3 && (
-            <Suspense fallback={<div className="text-center py-8">Loading donors...</div>}>
-              <DonorSearchResults 
-                searchQuery={donorQuery} 
-                onSelectDonor={(d) => navigateToEntity(d.donor_id, 'donor')} 
-              />
-            </Suspense>
+            <ErrorBoundary>
+              <Suspense fallback={<div className="text-center py-8">Loading donors...</div>}>
+                <DonorSearchResults 
+                  searchQuery={donorQuery} 
+                  onSelectDonor={(d) => navigateToEntity(d.donor_id, 'donor')} 
+                />
+              </Suspense>
+            </ErrorBoundary>
           )}
         </TabsContent>
       </Tabs>
