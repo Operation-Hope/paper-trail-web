@@ -1,26 +1,23 @@
 import { getDuckDB } from './vote';
 
-/**
- * 🛠️ THE FIX: We list the files explicitly in an array. 
- * Standard HTTP URLs sometimes fail to expand braces {} before the request is sent. 
- * Listing them ensures DuckDB treats each as a separate, valid target.
- */
-const DIME_RECENT_FILES = [
-  "hf://datasets/Dustinhax/paper-trail-data/dime/contributions/organizational/contribDB_2018_organizational.parquet",
-  "hf://datasets/Dustinhax/paper-trail-data/dime/contributions/organizational/contribDB_2020_organizational.parquet",
-  "hf://datasets/Dustinhax/paper-trail-data/dime/contributions/organizational/contribDB_2022_organizational.parquet",
-  "hf://datasets/Dustinhax/paper-trail-data/dime/contributions/organizational/contribDB_2024_organizational.parquet"
-];
-
+// 🚀 SPEED FIX: We point ONLY to the 2024 file to keep the load time under 5 seconds.
+// 🚀 FIX: Use the direct HTTPS resolve link instead of the 'hf://' protocol
+const DIME_2024_URL = "https://huggingface.co/datasets/Dustinhax/paper-trail-data/resolve/main/dime/contributions/organizational/contribDB_2024_organizational.parquet";
 export async function getTopIndustryDonors(icpsrId: number) {
+  // 1. Session Cache (Strategy 3) - Keep this so the 5s load only happens once!
+  const cacheKey = `donations_final_${icpsrId}`;
+  const cached = sessionStorage.getItem(cacheKey);
+  if (cached) return JSON.parse(cached);
+
   const db = await getDuckDB(); 
   if (!db) return [];
   const conn = await db.connect();
 
   try {
-    await conn.query(`PRAGMA enable_object_cache;`); 
+    await conn.query(`PRAGMA enable_object_cache;`);
+    await conn.query(`SET http_timeout=15000;`); // 15s limit
 
-    // 1. SMART BRIDGE: Bernie is confirmed as 'cand1235'
+    // 2. BRIDGE LOOKUP (Bernie is cand1235)
     const bridgeQuery = `
       SELECT bonica_rid, recipient_name 
       FROM crosswalk 
@@ -29,39 +26,35 @@ export async function getTopIndustryDonors(icpsrId: number) {
          OR (recipient_name ILIKE '%Sanders, Bern%' AND '${icpsrId}' IN ('29147', '15039'))
       LIMIT 1
     `;
-    
     const bridgeCheck = await conn.query(bridgeQuery);
     const bridgeResult = bridgeCheck.toArray()[0] as any;
     
-    console.log(`🔎 [Bridge Trace] Success: ${bridgeResult?.recipient_name}`);
-
     if (!bridgeResult?.bonica_rid) return [];
 
-    // 2. THE DONOR QUERY:
-    // We map the array into a format DuckDB understands for read_parquet()
-    const filesList = DIME_RECENT_FILES.map(f => `'${f}'`).join(', ');
-    
+    // 3. THE 2024 LOOKUP: Hits one file, one ID.
+    // Using the exact "contributor.name" column we saw earlier.
     const query = `
       SELECT 
         "contributor.name" as donor, 
-        SUM(amount) as total_amount
-      FROM read_parquet([${filesList}])
+        SUM(amount) as total
+      FROM '${DIME_2024_URL}'
       WHERE "bonica.rid" = '${bridgeResult.bonica_rid}'
-      AND "contributor.name" IS NOT NULL
       GROUP BY 1
       ORDER BY 2 DESC
       LIMIT 5
     `;
 
     const result = await conn.query(query);
-    const data = result.toArray();
-    
-    console.log(`📊 [DIME Trace] Found ${data.length} donors for ${bridgeResult.bonica_rid}`);
-
-    return data.map((row: any) => ({
+    const data = result.toArray().map((row: any) => ({
       name: row.donor,
-      value: Number(row.total_amount)
+      value: Number(row.total)
     }));
+
+    if (data.length > 0) {
+      sessionStorage.setItem(cacheKey, JSON.stringify(data));
+    }
+
+    return data;
   } catch (e: any) {
     console.error("❌ SQL Query Error:", e.message);
     return [];
@@ -70,7 +63,7 @@ export async function getTopIndustryDonors(icpsrId: number) {
   }
 }
 
-/** 🧱 PLUGS: Mandatory exports for index.ts */
+/** 🧱 STUB EXPORTS (Keep these to satisfy index.ts) */
 export const createDonations = () => [];
 export const createDonation = () => ({ id: 'dummy', amount: 0 });
 export const createDonationSummaries = () => [];

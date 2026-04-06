@@ -1,20 +1,21 @@
+// src/mocks/browser.ts
 import { setupWorker } from 'msw/browser';
-import { http, passthrough } from 'msw';
 import { handlers } from './handlers';
 
-// 🚀 NETWORK FIX: Explicitly allow DuckDB to stream data without MSW interference
-const bypassHandlers = [
-  http.all('https://huggingface.co/*', () => passthrough()),
-  http.all('https://*.huggingface.co/*', () => passthrough()),
-  http.all('https://voteview.com/*', () => passthrough()),
-];
+export const worker = setupWorker(...handlers);
+// Look for your worker.start() call
 
-export const worker = setupWorker(...bypassHandlers, ...handlers);
+// src/mocks/browser.ts (or wherever you call worker.start)
 
 worker.start({
-  onUnhandledRequest(req: Request, print: { warning: () => void }) {
-    const url = req.url.toString();
-    if (url.includes('huggingface.co') || url.includes('voteview.com')) return;
-    print.warning();
+  serviceWorker: {
+    url: '/mockServiceWorker.js',
+  },
+  // 🛡️ THE FIX: Only use the function version to handle the logic
+  onUnhandledRequest(request, print) {
+    if (request.url.includes('huggingface.co')) {
+      return; // Silent bypass for our data files
+    }
+    print.warning(); // Warn for anything else
   },
 });

@@ -1,160 +1,57 @@
-/**
- * Politician details view component
- * Displays comprehensive information including header, donation chart, and voting record
- */
-import { useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { api } from '@/services/api';
+import VoteRecord from './VoteRecord';
+import { DonationChart } from './DonationChart';
 import { Button } from './ui/button';
-import { Card, CardContent } from './ui/card';
-import { Badge } from './ui/badge';
-import { Avatar, AvatarFallback } from './ui/avatar';
-import { ArrowLeft } from 'lucide-react'; // Added for the icon
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from './ui/breadcrumb';
-import { VoteRecord } from './VoteRecord';
-import DonationChart from './DonationChart';
-import type { Politician } from '../types/api';
+import { ArrowLeft, Landmark, Wallet } from 'lucide-react';
 
-interface PoliticianDetailsProps {
-  politician: Politician;
-  onClose: () => void;
-}
+export function PoliticianDetails() {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
 
-export function PoliticianDetails({
-  politician,
-  onClose,
-}: PoliticianDetailsProps) {
-  const [selectedSubjectForDonations, setSelectedSubjectForDonations] =
-    useState<string | null>(null);
+  const { data: politician, isLoading, error } = useQuery({
+    queryKey: ['politician', id],
+    queryFn: () => id ? api.getPoliticianById(id) : null,
+    enabled: !!id,
+  });
 
-  // Updated colors to match common US political themes
-  const getPartyColor = (party: string): string => {
-    if (party === 'R')
-      return 'bg-red-100 text-red-800 border-red-300 dark:bg-red-900/30 dark:text-red-400';
-    if (party === 'D')
-      return 'bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/30 dark:text-blue-400';
-    return 'bg-gray-100 text-gray-800 border-gray-300 dark:bg-gray-800 dark:text-gray-400';
-  };
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[500px] space-y-4">
+        <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+        <p className="text-xl font-medium animate-pulse text-muted-foreground font-mono uppercase">Initializing...</p>
+      </div>
+    );
+  }
 
-  const getAvatarColor = (party: string): string => {
-    if (party === 'R') return 'bg-red-600 text-white';
-    if (party === 'D') return 'bg-blue-600 text-white';
-    return 'bg-slate-600 text-white';
-  };
-
-  const getInitials = (first_name: string, last_name: string): string => {
-    return `${first_name.charAt(0)}${last_name.charAt(0)}`.toUpperCase();
-  };
-
-  const handleSubjectClick = (subject: string | null) => {
-    setSelectedSubjectForDonations(subject);
-  };
-
-  const handleDonationTitleClick = () => {
-    if (selectedSubjectForDonations) {
-      setSelectedSubjectForDonations(null);
-    }
-  };
+  if (error || !politician) {
+    return <div className="p-12 text-center"><Button onClick={() => navigate('/')}>Return to Search</Button></div>;
+  }
 
   return (
-    <div className="space-y-6">
-      {/* Breadcrumb Navigation */}
-      <Breadcrumb>
-        <BreadcrumbList>
-          <BreadcrumbItem>
-            <BreadcrumbLink onClick={onClose} className="cursor-pointer">
-              Politicians
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator />
-          <BreadcrumbItem>
-            <BreadcrumbPage>
-              {politician.first_name} {politician.last_name}
-            </BreadcrumbPage>
-          </BreadcrumbItem>
-        </BreadcrumbList>
-      </Breadcrumb>
+    <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-700 pb-20">
+      <nav className="py-2">
+        <Button variant="ghost" onClick={() => navigate(-1)} className="gap-2 text-muted-foreground hover:text-foreground">
+          <ArrowLeft size={18} /> Back to Results
+        </Button>
+      </nav>
 
-      {/* Header Section */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="mb-4 flex flex-col items-start justify-between gap-4 sm:flex-row">
-            <div className="flex flex-1 items-center gap-4">
-              <Avatar className={`size-20 ${getAvatarColor(politician.party)}`}>
-                <AvatarFallback
-                  className={`text-2xl ${getAvatarColor(politician.party)}`}
-                >
-                  {getInitials(politician.first_name, politician.last_name)}
-                </AvatarFallback>
-              </Avatar>
+      <header className="border-b-2 border-primary/10 pb-8">
+        <h1 className="text-5xl md:text-7xl font-black tracking-tighter uppercase">{politician.full_name}</h1>
+        <p className="text-2xl font-light text-muted-foreground">{politician.state} — {politician.chamber}</p>
+      </header>
 
-              <div className="flex-1">
-                <div className="mb-3 flex items-center gap-3">
-                  <h1 className="text-3xl font-bold">
-                    {politician.first_name} {politician.last_name}
-                  </h1>
-                  {!politician.is_active && (
-                    <Badge variant="secondary">Inactive</Badge>
-                  )}
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <Badge className={getPartyColor(politician.party)}>
-                    {politician.party === 'D'
-                      ? 'Democrat'
-                      : politician.party === 'R'
-                        ? 'Republican'
-                        : 'Independent'}
-                  </Badge>
-                  <Badge variant="outline" className="px-3 py-1 text-base">
-                    {politician.state}
-                  </Badge>
-                  {/* FIX: Changed .seat to .district to match interface */}
-                  {politician.district && (
-                    <Badge variant="secondary" className="px-3 py-1 text-base">
-                      {politician.district}
-                    </Badge>
-                  )}
-                </div>
-              </div>
-            </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+        <section className="space-y-6">
+          <h2 className="text-xl font-bold uppercase tracking-tight border-b border-primary/20 pb-3 flex items-center gap-2"><Landmark size={20}/> Voting Record</h2>
+          <div className="bg-card rounded-xl border-2 p-1"><VoteRecord icpsrId={politician.icpsr_id || 0} /></div>
+        </section>
 
-            {/* Back Button with Arrow icon Added */}
-            <Button
-              onClick={onClose}
-              variant="outline"
-              className="flex items-center gap-2"
-            >
-              <ArrowLeft size={16} />
-              Back to Search
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Two-column layout */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <DonationChart
-          politicianId={politician.canonical_id}
-          selectedTopic={selectedSubjectForDonations || undefined}
-          onTopicChange={(topic) => {
-            setSelectedSubjectForDonations(topic || null);
-          }}
-          onTitleClick={
-            selectedSubjectForDonations ? handleDonationTitleClick : undefined
-          }
-        />
-
-        <VoteRecord
-          politicianId={politician.canonical_id}
-          // Assuming VoteRecord might need its props updated if Error 2 persists
-          // Ensure VoteRecordProps has these fields defined
-          onSubjectClick={handleSubjectClick}
-        />
+        <section className="space-y-6">
+          <h2 className="text-xl font-bold uppercase tracking-tight border-b border-primary/20 pb-3 flex items-center gap-2"><Wallet size={20}/> Top Funding (2024)</h2>
+          <div className="bg-card rounded-xl border-2 p-6 min-h-[400px]"><DonationChart politicianId={politician.icpsr_id || 0} /></div>
+        </section>
       </div>
     </div>
   );

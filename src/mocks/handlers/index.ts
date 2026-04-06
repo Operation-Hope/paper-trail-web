@@ -1,23 +1,11 @@
-import { http, passthrough } from 'msw'; // Import passthrough
-import { politicianHandlers } from './politicians';
-import { donorHandlers } from './donors';
-import { billHandlers } from './bills';
+import { passthroughHandlers } from './passthrough';
+import { politicianHandlers } from './politicians'; 
+// import { voteHandlers } from '../data/factories/vote'; // 👈 You can comment this out
 
 export const handlers = [
-  // 1. SURGICAL BYPASS: Hugging Face (Data)
-  // Tells MSW to stay away from the binary Parquet streams
-  http.all('https://huggingface.co/*', () => {
-    return passthrough();
-  }),
-
-  // 2. SURGICAL BYPASS: jsDelivr (WASM/Workers)
-  // Tells MSW to stay away from the DuckDB engine files
-  http.all('https://cdn.jsdelivr.net/*', () => {
-    return passthrough();
-  }),
-
-  // 3. YOUR EXISTING HANDLERS
+  ...passthroughHandlers,
   ...politicianHandlers,
-  ...donorHandlers,
-  ...billHandlers,
+  // If this array is empty or commented out, MSW won't intercept the vote API
 ];
+
+export default handlers;
