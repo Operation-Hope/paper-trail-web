@@ -1,11 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/services/api';
-import { Landmark, FileText } from 'lucide-react';
+import { FileText, Gavel } from 'lucide-react'; // 🛡️ Cleaned up unused Landmark
 
-/**
- * ⚖️ VoteRecord Component
- * Displays a paginated list of legislative actions for a specific ICPSR ID.
- */
 interface VoteRecordProps {
   icpsrId: number;
 }
@@ -20,67 +16,87 @@ export default function VoteRecord({ icpsrId }: VoteRecordProps) {
     enabled: !!icpsrId,
   });
 
-  // 🧱 STATE 1: LOADING (Now matched to DonationChart style)
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[300px] space-y-3">
-        {/* 🔄 THE SPINNER: Matches the Funding Chart exactly */}
-        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-        <p className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
-          Loading Legislative History...
+      <div className="flex min-h-[300px] flex-col items-center justify-center space-y-3">
+        <div className="border-primary h-8 w-8 animate-spin rounded-full border-2 border-t-transparent" />
+        <p className="text-muted-foreground font-mono text-xs tracking-widest uppercase">
+          Querying DuckDB...
         </p>
       </div>
     );
   }
 
-  // 🧱 STATE 2: ERROR OR EMPTY
   if (error || !data || data.votes.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[300px] text-muted-foreground p-8 text-center border-2 border-dashed rounded-xl m-2">
+      <div className="text-muted-foreground m-2 flex min-h-[300px] flex-col items-center justify-center rounded-xl border-2 border-dashed p-8 text-center">
         <FileText className="mb-2 opacity-20" size={32} />
         <p className="text-sm font-medium">No recent voting records found.</p>
-        <p className="text-xs opacity-50 mt-1 uppercase tracking-tighter">Verified by DuckDB Engine</p>
+        <p className="mt-1 text-xs tracking-tighter uppercase opacity-50">
+          Verified by DuckDB Engine
+        </p>
       </div>
     );
   }
 
-  // 🧱 STATE 3: SUCCESS (VOTING CARDS)
   return (
-    <div className="space-y-3 p-2 animate-in fade-in duration-500">
+    <div className="animate-in fade-in space-y-4 p-2 duration-500">
       {data.votes.map((vote) => (
-        <div 
-          key={vote.vote_id} 
-          className="group p-4 border-2 rounded-lg bg-card hover:border-primary/40 hover:bg-accent/10 transition-all duration-200"
+        <div
+          key={vote.vote_id}
+          className="group bg-card hover:border-primary/40 rounded-xl border-2 p-5 transition-all duration-300"
         >
-          <div className="flex justify-between items-start mb-2">
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-mono font-bold px-2 py-0.5 bg-secondary text-secondary-foreground rounded uppercase tracking-tighter">
-                {vote.bill_number}
-              </span>
-              <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest">
-                {vote.vote_date}
-              </span>
+          <div className="mb-3 flex items-start justify-between gap-4">
+            <div className="flex-1 space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="bg-primary/10 text-primary rounded-sm px-2 py-0.5 text-[10px] font-black tracking-tighter uppercase">
+                  {vote.bill_number}
+                </span>
+                <span className="text-muted-foreground font-mono text-[10px] tracking-widest uppercase">
+                  {vote.vote_date}
+                </span>
+              </div>
+
+              {/* 🛡️ Now using bill_title from the Join */}
+              <h3 className="group-hover:text-primary text-sm leading-tight font-bold transition-colors">
+                {vote.bill_title}
+              </h3>
             </div>
-            
-            <span className={`text-[10px] font-black px-3 py-1 rounded-sm uppercase tracking-widest border-2 ${
-              vote.vote_value === 'Yea' ? 'border-green-600/30 bg-green-600/10 text-green-500' : 
-              vote.vote_value === 'Nay' ? 'border-red-600/30 bg-red-600/10 text-red-500' : 
-              'border-zinc-700 bg-zinc-800 text-zinc-400'
-            }`}>
-              {vote.vote_value}
-            </span>
+
+            <div className="flex flex-col items-end gap-1">
+              <span
+                className={`rounded-sm border-2 px-3 py-1 text-[10px] font-black tracking-widest uppercase ${
+                  vote.vote_value === 'Yea'
+                    ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600'
+                    : vote.vote_value === 'Nay'
+                      ? 'border-rose-500/30 bg-rose-500/10 text-rose-600'
+                      : 'border-zinc-700 bg-zinc-800 text-zinc-400'
+                }`}
+              >
+                {vote.vote_value}
+              </span>
+              {/* 🛡️ Now using action_type from the Join */}
+              {vote.action_type && (
+                <span className="text-muted-foreground font-mono text-[9px] tracking-tighter uppercase">
+                  {vote.action_type}
+                </span>
+              )}
+            </div>
           </div>
-          
-          <p className="text-sm font-medium leading-snug line-clamp-2 text-foreground/90">
+
+          <p className="text-muted-foreground border-muted border-l-2 pl-3 text-xs leading-relaxed">
             {vote.bill_description}
           </p>
         </div>
       ))}
-      
-      <div className="text-center pt-4 opacity-40">
-        <p className="text-[10px] font-mono uppercase tracking-[0.2em]">
-          End of Recent Records
-        </p>
+
+      <div className="pt-6 text-center opacity-30">
+        <div className="mb-1 flex items-center justify-center gap-2">
+          <Gavel size={12} />
+          <p className="font-mono text-[9px] tracking-[0.3em] uppercase">
+            End of Active Congressional Record
+          </p>
+        </div>
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { api } from '@/services/api';
+import { api } from '../services/api';
 import VoteRecord from './VoteRecord';
 import { DonationChart } from './DonationChart';
 import { Button } from './ui/button';
@@ -10,47 +10,65 @@ export function PoliticianDetails() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
-  const { data: politician, isLoading, error } = useQuery({
+  const {
+    data: politician,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ['politician', id],
-    queryFn: () => id ? api.getPoliticianById(id) : null,
+    queryFn: () => (id ? api.getPoliticianById(id) : null),
     enabled: !!id,
   });
 
-  if (isLoading) {
+  if (isLoading)
     return (
-      <div className="flex flex-col items-center justify-center min-h-[500px] space-y-4">
-        <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-        <p className="text-xl font-medium animate-pulse text-muted-foreground font-mono uppercase">Initializing...</p>
+      <div className="animate-pulse p-20 text-center">
+        Initializing Profile...
       </div>
     );
-  }
-
-  if (error || !politician) {
-    return <div className="p-12 text-center"><Button onClick={() => navigate('/')}>Return to Search</Button></div>;
-  }
+  if (error || !politician)
+    return (
+      <div className="p-12 text-center">
+        <Button onClick={() => navigate('/')}>Back to Search</Button>
+      </div>
+    );
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-700 pb-20">
-      <nav className="py-2">
-        <Button variant="ghost" onClick={() => navigate(-1)} className="gap-2 text-muted-foreground hover:text-foreground">
-          <ArrowLeft size={18} /> Back to Results
-        </Button>
-      </nav>
+    <div className="animate-in fade-in mx-auto max-w-6xl space-y-8 px-4 py-10 duration-700">
+      <Button
+        variant="ghost"
+        onClick={() => navigate(-1)}
+        className="text-muted-foreground hover:text-foreground gap-2 p-0"
+      >
+        <ArrowLeft size={18} /> Back to Results
+      </Button>
 
-      <header className="border-b-2 border-primary/10 pb-8">
-        <h1 className="text-5xl md:text-7xl font-black tracking-tighter uppercase">{politician.full_name}</h1>
-        <p className="text-2xl font-light text-muted-foreground">{politician.state} — {politician.chamber}</p>
+      <header className="border-primary/10 border-b-2 pb-8">
+        <h1 className="text-5xl leading-none font-black tracking-tighter uppercase md:text-7xl">
+          {politician.full_name}
+        </h1>
+        <p className="text-muted-foreground mt-2 text-2xl font-light">
+          {politician.party} — {politician.state} {politician.district}
+        </p>
       </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+      <div className="grid grid-cols-1 gap-10 lg:grid-cols-2">
         <section className="space-y-6">
-          <h2 className="text-xl font-bold uppercase tracking-tight border-b border-primary/20 pb-3 flex items-center gap-2"><Landmark size={20}/> Voting Record</h2>
-          <div className="bg-card rounded-xl border-2 p-1"><VoteRecord icpsrId={politician.icpsr_id || 0} /></div>
+          <h2 className="border-primary/20 flex items-center gap-2 border-b pb-3 text-xl font-bold tracking-tight uppercase">
+            <Landmark size={20} className="text-primary" /> Voting Record
+          </h2>
+          <div className="bg-card rounded-xl border-2 shadow-sm">
+            <VoteRecord icpsrId={politician.icpsr_id} />
+          </div>
         </section>
 
         <section className="space-y-6">
-          <h2 className="text-xl font-bold uppercase tracking-tight border-b border-primary/20 pb-3 flex items-center gap-2"><Wallet size={20}/> Top Funding (2024)</h2>
-          <div className="bg-card rounded-xl border-2 p-6 min-h-[400px]"><DonationChart politicianId={politician.icpsr_id || 0} /></div>
+          <h2 className="border-primary/20 flex items-center gap-2 border-b pb-3 text-xl font-bold tracking-tight uppercase">
+            <Wallet size={20} className="text-primary" /> Top Funding Sources
+          </h2>
+          <div className="bg-card min-h-[400px] rounded-xl border-2 p-6 shadow-sm">
+            <DonationChart politicianId={politician.icpsr_id} />
+          </div>
         </section>
       </div>
     </div>

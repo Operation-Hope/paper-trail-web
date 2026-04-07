@@ -19,6 +19,8 @@ export interface Vote {
   vote_id: string;
   vote_value: string;
   bill_number: string;
+  bill_title: string; // 🆕 Added for Step 2
+  action_type: string; // 🆕 Added for Step 2
   bill_description: string;
   vote_date: string;
   topics: string[];
