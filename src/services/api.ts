@@ -1,65 +1,67 @@
-import {
-  getLivePoliticianById,
-  getLivePoliticians,
-  getVotesForPolitician,
-  createVoteDateRangeResponse,
+import { 
+  getLivePoliticianById, 
+  getLivePoliticians, 
+  getPoliticianVotes,
   getDuckDB,
+  DIME_BASE_URL
 } from '../mocks/data/factories/vote';
 
 export const api = {
-  searchPoliticians: async (q: string) => await getLivePoliticians(q),
-  getPoliticianById: async (id: string) => await getLivePoliticianById(id),
-  getPoliticianVotes: async (icpsr: number, p: any) =>
-    await getVotesForPolitician(icpsr, p),
-  getPoliticianVotesDateRange: async (icpsr: number) =>
-    await createVoteDateRangeResponse(icpsr),
+  searchPoliticians: getLivePoliticians,
+  getPoliticianById: getLivePoliticianById,
+  getPoliticianVotes: getPoliticianVotes,
 
-  getDonationSummary: async (icpsr: number) => {
-    const instance = await getDuckDB();
-    if (!instance || !icpsr) return [];
-
-    const conn = await instance.connect();
-    const HF_TOKEN = (import.meta.env.VITE_HF_TOKEN as string) || '';
-    const BASE_URL =
-      'https://huggingface.co/datasets/Dustinhax/paper-trail-data/resolve/main/dime/contributions/organizational';
-    const years = [2016, 2018, 2020, 2022, 2024];
-
+  async getDonationSummary(icpsr: number, name: string, onProgress?: (p: number) => void) {
+    const db = await getDuckDB();
+    if (!db || !icpsr) return [];
+    const conn = await db.connect();
+    
     try {
-      const fileQueries = years
-        .map((year) => {
-          const fileUrl = `${BASE_URL}/contribDB_${year}_organizational.parquet?download=true${HF_TOKEN ? `&token=${HF_TOKEN}` : ''}`;
-          return `SELECT "contributor.name", "recipient.name", "bonica.rid", amount FROM '${fileUrl}'`;
-        })
-        .join(' UNION ALL ');
+      if (onProgress) onProgress(10);
+      const remoteUrl = `${DIME_BASE_URL}/contribDB_2024_organizational.parquet`;
+
+      // 🕵️ Get Columns
+      const schemaRes = await conn.query(`DESCRIBE SELECT * FROM read_parquet('${remoteUrl}') LIMIT 1`);
+      const columns = schemaRes.toArray().map(r => r.toJSON().column_name);
+
+      const idCol = columns.find(c => c.includes('recipient.id') || c.includes('bonica.rid')) || columns[0];
+      const recipientNameCol = columns.find(c => c.includes('recipient.name')) || columns[1];
+      const donorNameCol = columns.find(c => c.includes('contributor.name')) || 'contributor.name';
+
+      if (onProgress) onProgress(40);
+
+      // 🛡️ BULLETPROOF NAME PARSER
+      // input: "CRUZ, Rafael Edward (Ted)"
+      // 1. Split by comma to get "CRUZ"
+      const lastName = name.split(',')[0].trim().toUpperCase(); 
+      // 2. Get first word after comma to get "RAFAEL"
+      const firstName = name.split(',')[1]?.trim().split(' ')[0].toUpperCase() || '';
 
       const query = `
-        WITH lifetime_data AS (${fileQueries})
-        SELECT 
-          c."contributor.name" as name, 
-          SUM(CAST(c.amount AS DOUBLE)) as value
-        FROM lifetime_data c
-        LEFT JOIN crosswalk cw ON c."bonica.rid" = cw.bonica_rid
-        WHERE CAST(cw.icpsr AS VARCHAR) = '${icpsr}'
-           OR (c."recipient.name" ILIKE '%' || (SELECT split_part(bioname, ',', 1) FROM 'members.parquet' WHERE icpsr = ${icpsr} LIMIT 1) || '%')
-        GROUP BY name
-        ORDER BY value DESC
-        LIMIT 5;
+        SELECT "${donorNameCol}" as name, SUM(amount) as value 
+        FROM read_parquet('${remoteUrl}')
+        WHERE (UPPER("${recipientNameCol}") LIKE '%${lastName}%' 
+               AND UPPER("${recipientNameCol}") LIKE '%${firstName}%')
+        GROUP BY name 
+        ORDER BY value DESC 
+        LIMIT 5
       `;
+      
+      console.log(`🔎 Flowchart Search: Looking for [${firstName}] [${lastName}] in ${recipientNameCol}`);
+      
+      const res = await conn.query(query);
+      if (onProgress) onProgress(100);
 
-      const result = await conn.query(query);
-      return result
-        .toArray()
-        .map((row) => ({
-          name: row.name || 'Unknown Donor',
-          value: Number(row.value) || 0,
-        }));
-    } catch (err: any) {
-      console.error('❌ Aggregation Error:', err.message);
+      return res.toArray().map(r => ({
+        name: r.name || 'Unknown Entity',
+        value: Number(r.value) || 0
+      }));
+
+    } catch (e: any) {
+      console.error("🔥 Flowchart Error:", e.message);
       return [];
     } finally {
       await conn.close();
     }
-  },
+  }
 };
-
-export default api;

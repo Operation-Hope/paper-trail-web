@@ -19,8 +19,8 @@ export interface Vote {
   vote_id: string;
   vote_value: string;
   bill_number: string;
-  bill_title: string; // 🆕 Added for Step 2
-  action_type: string; // 🆕 Added for Step 2
+  bill_title: string;
+  action_type: string;
   bill_description: string;
   vote_date: string;
   topics: string[];
@@ -29,10 +29,4 @@ export interface Vote {
 export interface VoteResponse {
   votes: Vote[];
   pagination: { currentPage: number; totalPages: number; totalVotes: number };
-}
-
-export interface VoteDateRangeResponse {
-  earliest_vote: string;
-  latest_vote: string;
-  congress_sessions: { congress: number; start: string; end: string }[];
 }
