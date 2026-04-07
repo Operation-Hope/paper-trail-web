@@ -17,53 +17,69 @@ export default function UnifiedSearch() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto py-12 px-4 space-y-8">
-      <header className="text-center space-y-4">
-        <h1 className="text-6xl font-black tracking-tighter uppercase italic">Paper Trail</h1>
-        <p className="text-muted-foreground font-mono uppercase tracking-widest text-sm">
+    <div className="mx-auto max-w-4xl space-y-8 px-4 py-12">
+      <header className="space-y-4 text-center">
+        <h1 className="text-6xl font-black tracking-tighter uppercase italic">
+          Paper Trail
+        </h1>
+        <p className="text-muted-foreground font-mono text-sm tracking-widest uppercase">
           Follow the money. Track the votes.
         </p>
       </header>
 
-      <div className="relative group">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={20} />
-        <Input 
-          className="pl-12 h-16 text-xl font-bold rounded-2xl border-2 shadow-lg focus-visible:ring-primary"
-          placeholder="Search by Politician Name (e.g. Jeffries)..."
+      <div className="group relative">
+        <Search
+          className="text-muted-foreground group-focus-within:text-primary absolute top-1/2 left-4 -translate-y-1/2 transition-colors"
+          size={20}
+        />
+        <Input
+          className="focus-visible:ring-primary h-16 rounded-2xl border-2 pl-12 text-xl font-bold shadow-lg"
+          placeholder="Search for a current U.S. Senator or Congressman..."
           value={query}
           onChange={handleSearch}
         />
-        {isLoading && <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 animate-spin text-primary" size={20} />}
+        {isLoading && (
+          <Loader2
+            className="text-primary absolute top-1/2 right-4 -translate-y-1/2 animate-spin"
+            size={20}
+          />
+        )}
       </div>
 
       <div className="grid gap-4">
         {/* 🛡️ Line 200 Fix: Optional chaining ensures no crash if data is missing */}
         {politicians?.length > 0 ? (
           politicians.map((p) => (
-            <Card 
+            <Card
               key={p.canonical_id}
-              className="p-6 cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-all group rounded-2xl border-2"
-              onClick={() => navigate(`/politician/${p.bioguide_id || p.icpsr_id}`)}
+              className="hover:border-primary/50 hover:bg-primary/5 group cursor-pointer rounded-2xl border-2 p-6 transition-all"
+              onClick={() =>
+                navigate(`/politician/${p.bioguide_id || p.icpsr_id}`)
+              }
             >
-              <div className="flex justify-between items-center">
+              <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="p-3 bg-primary/10 rounded-full text-primary group-hover:bg-primary group-hover:text-white transition-colors">
+                  <div className="bg-primary/10 text-primary group-hover:bg-primary rounded-full p-3 transition-colors group-hover:text-white">
                     <User size={24} />
                   </div>
                   <div>
-                    <h3 className="text-xl font-black uppercase tracking-tight">{p.full_name}</h3>
-                    <p className="font-mono text-sm text-muted-foreground uppercase">
+                    <h3 className="text-xl font-black tracking-tight uppercase">
+                      {p.full_name}
+                    </h3>
+                    <p className="text-muted-foreground font-mono text-sm uppercase">
                       {p.party} — {p.state} {p.district}
                     </p>
                   </div>
                 </div>
-                <Landmark className="opacity-10 group-hover:opacity-100 transition-opacity" />
+                <Landmark className="opacity-10 transition-opacity group-hover:opacity-100" />
               </div>
             </Card>
           ))
         ) : query.length > 2 && !isLoading ? (
-          <div className="text-center py-20 border-2 border-dashed rounded-3xl opacity-50">
-            <p className="font-mono uppercase tracking-widest text-sm">No matching records found</p>
+          <div className="rounded-3xl border-2 border-dashed py-20 text-center opacity-50">
+            <p className="font-mono text-sm tracking-widest uppercase">
+              No matching records found
+            </p>
           </div>
         ) : null}
       </div>
