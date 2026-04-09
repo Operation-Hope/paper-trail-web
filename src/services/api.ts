@@ -20,6 +20,7 @@ export const api = {
       if (onProgress) onProgress(10);
       const remoteUrl = `${DIME_BASE_URL}/contribDB_2024_organizational.parquet`;
 
+      // 🕵️ Dynamically find column names to handle schema variations
       const schemaRes = await conn.query(`DESCRIBE SELECT * FROM read_parquet('${remoteUrl}') LIMIT 1`);
       const columns = schemaRes.toArray().map(r => r.toJSON().column_name);
 
@@ -29,16 +30,17 @@ export const api = {
       const employerCol = columns.find(c => c.includes('employer')) || 'contributor.employer';
       const occCol = columns.find(c => c.includes('occ')) || 'occ.standardized';
 
-      // 🛡️ Precision Name Parsing
+      if (onProgress) onProgress(30);
+
+      // 🛡️ Robust Name Parsing
       const nameParts = name.replace(/[()]/g, '').split(/[ ,]+/).filter(Boolean);
       const lastName = name.includes(',') ? nameParts[0].toUpperCase() : nameParts[nameParts.length - 1].toUpperCase();
       const firstName = nameParts[0].toUpperCase();
 
-      if (onProgress) onProgress(40);
+      console.log(`🔎 Data Discovery: Aggregating all committees for ${firstName} ${lastName} in ${state}`);
 
-      // 🚀 THE "TOTAL IMPACT" QUERY
-      // We no longer limit to 1 ID. We aggregate every committee matching Name + State.
-      // This merges his Campaign Committee, Leadership PAC, and Victory Funds.
+      // 🚀 THE UNIFIED AGGREGATION QUERY
+      // This merges Campaign Committees, Leadership PACs, and Joint Fundraising committees.
       const query = `
         SELECT 
           "${donorNameCol}" as name, 
@@ -54,8 +56,6 @@ export const api = {
         LIMIT 500
       `;
       
-      console.log(`🔎 Corruption Watch: Aggregating all committees for ${firstName} ${lastName} (AL)`);
-      
       const res = await conn.query(query);
       if (onProgress) onProgress(100);
 
@@ -67,7 +67,7 @@ export const api = {
       }));
 
     } catch (e: any) {
-      console.error("🔥 Flowchart Error:", e.message);
+      console.error("🔥 API Error:", e.message);
       return [];
     } finally {
       await conn.close();
