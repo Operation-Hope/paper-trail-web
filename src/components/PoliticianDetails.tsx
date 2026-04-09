@@ -69,6 +69,7 @@ export function PoliticianDetails() {
               <DonationChart
                 icpsrId={politician.icpsr_id}
                 politicianName={politician.full_name}
+                state={politician.state}
               />
             )}{' '}
           </div>

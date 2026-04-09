@@ -11,7 +11,7 @@ export const api = {
   getPoliticianById: getLivePoliticianById,
   getPoliticianVotes: getPoliticianVotes,
 
-  async getDonationSummary(icpsr: number, name: string, onProgress?: (p: number) => void) {
+  async getDonationSummary(icpsr: number, name: string, state: string, onProgress?: (p: number) => void) {
     const db = await getDuckDB();
     if (!db || !icpsr) return [];
     const conn = await db.connect();
@@ -20,41 +20,50 @@ export const api = {
       if (onProgress) onProgress(10);
       const remoteUrl = `${DIME_BASE_URL}/contribDB_2024_organizational.parquet`;
 
-      // 🕵️ Get Columns
       const schemaRes = await conn.query(`DESCRIBE SELECT * FROM read_parquet('${remoteUrl}') LIMIT 1`);
       const columns = schemaRes.toArray().map(r => r.toJSON().column_name);
 
-      const idCol = columns.find(c => c.includes('recipient.id') || c.includes('bonica.rid')) || columns[0];
-      const recipientNameCol = columns.find(c => c.includes('recipient.name')) || columns[1];
+      const recipientNameCol = columns.find(c => c.includes('recipient.name')) || 'recipient.name';
+      const stateCol = columns.find(c => c === 'recipient.state' || c === 'state') || 'recipient.state';
       const donorNameCol = columns.find(c => c.includes('contributor.name')) || 'contributor.name';
+      const employerCol = columns.find(c => c.includes('employer')) || 'contributor.employer';
+      const occCol = columns.find(c => c.includes('occ')) || 'occ.standardized';
+
+      // 🛡️ Precision Name Parsing
+      const nameParts = name.replace(/[()]/g, '').split(/[ ,]+/).filter(Boolean);
+      const lastName = name.includes(',') ? nameParts[0].toUpperCase() : nameParts[nameParts.length - 1].toUpperCase();
+      const firstName = nameParts[0].toUpperCase();
 
       if (onProgress) onProgress(40);
 
-      // 🛡️ BULLETPROOF NAME PARSER
-      // input: "CRUZ, Rafael Edward (Ted)"
-      // 1. Split by comma to get "CRUZ"
-      const lastName = name.split(',')[0].trim().toUpperCase(); 
-      // 2. Get first word after comma to get "RAFAEL"
-      const firstName = name.split(',')[1]?.trim().split(' ')[0].toUpperCase() || '';
-
+      // 🚀 THE "TOTAL IMPACT" QUERY
+      // We no longer limit to 1 ID. We aggregate every committee matching Name + State.
+      // This merges his Campaign Committee, Leadership PAC, and Victory Funds.
       const query = `
-        SELECT "${donorNameCol}" as name, SUM(amount) as value 
+        SELECT 
+          "${donorNameCol}" as name, 
+          SUM(amount) as value,
+          MAX("${employerCol}") as employer,
+          MAX("${occCol}") as occupation
         FROM read_parquet('${remoteUrl}')
-        WHERE (UPPER("${recipientNameCol}") LIKE '%${lastName}%' 
-               AND UPPER("${recipientNameCol}") LIKE '%${firstName}%')
+        WHERE UPPER("${recipientNameCol}") LIKE '%${lastName}%' 
+          AND UPPER("${recipientNameCol}") LIKE '%${firstName}%'
+          AND UPPER("${stateCol}") = '${state.toUpperCase()}'
         GROUP BY name 
         ORDER BY value DESC 
-        LIMIT 5
+        LIMIT 500
       `;
       
-      console.log(`🔎 Flowchart Search: Looking for [${firstName}] [${lastName}] in ${recipientNameCol}`);
+      console.log(`🔎 Corruption Watch: Aggregating all committees for ${firstName} ${lastName} (AL)`);
       
       const res = await conn.query(query);
       if (onProgress) onProgress(100);
 
       return res.toArray().map(r => ({
         name: r.name || 'Unknown Entity',
-        value: Number(r.value) || 0
+        value: Number(r.value) || 0,
+        employer: r.employer,
+        occupation: r.occupation
       }));
 
     } catch (e: any) {
