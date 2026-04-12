@@ -1,32 +1,28 @@
 export interface Politician {
-  canonical_id: string;
-  first_name: string;
-  last_name: string;
-  full_name: string;
+  id: string;        // Bioguide ID (e.g., "J000294")
+  icpsr: number;     // Numeric ID (e.g., 21339)
+  name: string;      
+  full_name: string; // Added for search results
   party: string;
   state: string;
   district: string;
-  is_active: boolean;
-  bioguide_id: string;
-  icpsr_id: number;
-  fec_candidate_id?: string;
-  nominate_dim1: number;
-  nominate_dim2: number;
-  chamber: 'House' | 'Senate';
+  role: string;      // "Representative" or "Senator"
+  chamber: string;   // Added for search results ("House" or "Senate")
+  canonical_id: string; // Added for search results key
+  imageUrl?: string;
 }
 
-export interface Vote {
-  vote_id: string;
-  vote_value: string;
-  bill_number: string;
-  bill_title: string;
-  action_type: string;
-  bill_description: string;
-  vote_date: string;
-  topics: string[];
+export interface DonationRecord {
+  name: string;
+  value: number;
+  date: string;
 }
 
-export interface VoteResponse {
-  votes: Vote[];
-  pagination: { currentPage: number; totalPages: number; totalVotes: number };
+export interface VoteRecord {
+  billId: string;
+  title: string;
+  date: string;
+  position: string;
+  result: string;
+  category: string;
 }

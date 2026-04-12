@@ -1,78 +1,69 @@
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../services/api';
-import VoteRecord from './VoteRecord';
+import { Politician } from '../types/api'; 
 import { DonationChart } from './DonationChart';
-import { Button } from './ui/button';
-import { ArrowLeft, Landmark, Wallet } from 'lucide-react';
+import { VoteHistory } from './VoteHistory';
+import { Loader2, MapPin, GraduationCap, Building2 } from 'lucide-react';
+import { useEffect } from 'react';
 
-export function PoliticianDetails() {
+export default function PoliticianDetails() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
 
-  const { data: politician, isLoading } = useQuery({
+  const { data: politician, isLoading: loadingMeta, isError } = useQuery<Politician>({
     queryKey: ['politician', id],
-    queryFn: () => (id ? api.getPoliticianById(id) : null),
+    queryFn: async () => {
+      const data = await api.getPoliticianById(id || '');
+      if (!data) throw new Error("Politician not found");
+      return data;
+    },
     enabled: !!id,
   });
 
-  if (isLoading)
-    return (
-      <div className="animate-pulse p-20 text-center font-mono tracking-widest uppercase">
-        Initializing Profile...
-      </div>
-    );
-  if (!politician)
-    return (
-      <div className="p-20 text-center">
-        <Button onClick={() => navigate('/')}>Return to Search</Button>
-      </div>
-    );
+  useEffect(() => {
+    if (politician?.name) {
+      document.title = `Project Paper Trail | ${politician.name}`;
+    }
+  }, [politician?.name]);
+
+  if (loadingMeta) return (
+    <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
+      <Loader2 className="h-12 w-12 animate-spin text-white" />
+      <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white">
+        Loading...
+      </p>
+    </div>
+  );
+
+  if (isError || !politician) return (
+    <div className="p-20 text-center space-y-4">
+      <p className="opacity-40 uppercase font-black text-2xl tracking-tighter text-white">Politician Not Found</p>
+    </div>
+  );
 
   return (
-    <div className="animate-in fade-in mx-auto max-w-6xl space-y-8 px-4 py-10 pb-20 duration-700">
-      <Button
-        variant="ghost"
-        onClick={() => navigate(-1)}
-        className="text-muted-foreground hover:text-foreground gap-2 p-0"
-      >
-        <ArrowLeft size={18} /> Back
-      </Button>
-
-      <header className="border-primary/10 border-b-2 pb-8">
-        <h1 className="text-5xl leading-none font-black tracking-tighter uppercase md:text-7xl">
-          {politician.full_name}
-        </h1>
-        <p className="text-muted-foreground mt-2 font-mono text-2xl font-light">
-          {politician.party} — {politician.state} {politician.district}
-        </p>
+    <div className="max-w-7xl mx-auto px-4 py-8 space-y-8 animate-in fade-in duration-700">
+      <header className="p-10 rounded-3xl border border-primary/5 bg-card shadow-sm">
+        <div className="space-y-6">
+          <div className="inline-flex items-center gap-3 px-4 py-1.5 rounded-full bg-primary/5 border border-primary/10">
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">
+              {politician.party} • {politician.role}
+            </span>
+          </div>
+          <h1 className="text-6xl font-black tracking-tighter leading-none">{politician.name}</h1>
+          <div className="flex flex-wrap items-center gap-8 text-[11px] font-black uppercase tracking-widest text-muted-foreground/60">
+            <div className="flex items-center gap-2"><MapPin className="h-4 w-4 text-primary opacity-70" /><span>{politician.state}</span></div>
+            <div className="flex items-center gap-2"><Building2 className="h-4 w-4 text-primary opacity-70" /><span>District {politician.district}</span></div>
+            <div className="flex items-center gap-2"><GraduationCap className="h-4 w-4 text-primary opacity-70" /><span>ICPSR: {politician.icpsr}</span></div>
+          </div>
+        </div>
       </header>
-
-      <div className="grid gap-10 lg:grid-cols-2">
-        <section className="space-y-6">
-          <h2 className="border-primary/20 flex items-center gap-2 border-b pb-3 text-xl font-bold tracking-tight uppercase">
-            <Landmark size={20} className="text-primary" /> Voting Record
-          </h2>
-          <div className="bg-card rounded-xl border-2 shadow-sm">
-            <VoteRecord icpsrId={politician.icpsr_id} />
-          </div>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        <section className="lg:col-span-5 h-full">
+          <DonationChart icpsrId={politician.icpsr} politicianName={politician.name} state={politician.state} />
         </section>
-
-        <section className="space-y-6">
-          <h2 className="border-primary/20 flex items-center gap-2 border-b pb-3 text-xl font-bold tracking-tight uppercase">
-            <Wallet size={20} className="text-primary" /> Top Funding Sources
-            2024 Cycle
-          </h2>
-          <div className="bg-card min-h-[400px] rounded-xl border-2 p-6 shadow-sm">
-            {/* Find where you display the politician info and add this */}
-            {politician && (
-              <DonationChart
-                icpsrId={politician.icpsr_id}
-                politicianName={politician.full_name}
-                state={politician.state}
-              />
-            )}{' '}
-          </div>
+        <section className="lg:col-span-7 h-full">
+          <VoteHistory icpsrId={politician.icpsr} />
         </section>
       </div>
     </div>

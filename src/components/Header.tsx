@@ -1,96 +1,43 @@
-/**
- * Site-wide navigation header
- * Displays app branding, navigation links, and disclaimer
- */
-import { useState } from 'react';
-import { NavLink } from 'react-router-dom';
-import { X } from 'lucide-react';
-import { ThemeToggle } from './ThemeToggle';
-
-const DISCLAIMER_DISMISSED_KEY = 'paper-trail-disclaimer-dismissed';
+import { Home, Workflow } from 'lucide-react';
+import { Link, useLocation } from 'react-router-dom';
 
 export default function Header() {
-  const [disclaimerDismissed, setDisclaimerDismissed] = useState(() => {
-    if (typeof window === 'undefined') {
-      return false;
-    }
-    return localStorage.getItem(DISCLAIMER_DISMISSED_KEY) === 'true';
-  });
+  const location = useLocation();
 
-  const handleDismissDisclaimer = () => {
-    setDisclaimerDismissed(true);
-    localStorage.setItem(DISCLAIMER_DISMISSED_KEY, 'true');
-  };
+  // 🛠️ Updated for Steel Gray background: Machined Obsidian Style
+  const baseButtonStyle = "p-4 rounded-xl border border-white/10 bg-zinc-950/40 hover:bg-zinc-950/60 hover:border-white/20 hover:opacity-100 transition-all flex items-center justify-center cursor-pointer";
 
   return (
-    <header className="bg-gradient-to-r from-blue-900 to-blue-950 text-white shadow-lg transition-colors dark:from-gray-900 dark:to-gray-800">
-      <div className="container mx-auto px-4 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 shrink-0"></div>
-            <div>
-              <h1 className="text-2xl font-bold">Paper Trail</h1>
-              <p className="text-xs text-blue-100 dark:text-gray-400">
-                by The People
-              </p>
+    <header className="border-b border-white/5 bg-zinc-800/75 backdrop-blur-md sticky top-0 z-50">
+      <div className="max-w-7xl mx-auto px-6 h-28 flex items-center justify-center">
+        
+        {/* CENTERED TOOLBAR */}
+        <div className="flex items-center gap-12 md:gap-16">
+          
+          {/* Home Icon Container */}
+          <Link to="/">
+            <div className={`${baseButtonStyle} ${
+              location.pathname === '/' 
+                ? 'border-zinc-400/50 bg-zinc-950/80 opacity-100 shadow-lg' 
+                : 'opacity-50'
+            }`}>
+              <Home className="h-6 w-6 opacity-80 text-zinc-300" />
             </div>
-          </div>
-          <div className="flex items-center gap-6">
-            <nav className="flex gap-6">
-              <NavLink
-                to="/politician"
-                className={({ isActive }) =>
-                  isActive
-                    ? 'font-bold underline underline-offset-4'
-                    : 'underline-offset-4 hover:underline'
-                }
-              >
-                Politicians
-              </NavLink>
-              <NavLink
-                to="/money-flowchart"
-                className="hover:text-primary transition-colors"
-              >
-                Money Flowchart
-              </NavLink>
-            </nav>
-            <button
-              onClick={() => {
-                const event = new KeyboardEvent('keydown', {
-                  key: 'k',
-                  metaKey: true,
-                  bubbles: true,
-                });
-                document.dispatchEvent(event);
-              }}
-              className="hidden items-center gap-2 rounded-md border border-white/20 px-3 py-1.5 text-xs transition-colors hover:bg-white/10 sm:flex"
-              title="Search (Cmd+K or Ctrl+K)"
-            >
-              <span>Search</span>
-              <kbd className="rounded bg-white/20 px-1.5 py-0.5 font-mono text-[10px]">
-                ⌘K
-              </kbd>
-            </button>
-            <ThemeToggle />
-          </div>
+          </Link>
+          
+          {/* Money Flow Icon Container */}
+          <Link to="/flowcharts">
+            <div className={`${baseButtonStyle} ${
+              location.pathname === '/flowcharts' 
+                ? 'border-zinc-400/50 bg-zinc-950/80 opacity-100 shadow-lg' 
+                : 'opacity-50'
+            }`}>
+              <Workflow className="h-6 w-6 opacity-80 text-zinc-300" />
+            </div>
+          </Link>
+          
         </div>
       </div>
-      {!disclaimerDismissed && (
-        <div className="relative border-t border-yellow-700 bg-yellow-900/50 px-4 py-2 transition-colors dark:border-yellow-700 dark:bg-yellow-900/50">
-          <p className="pr-8 text-center text-sm text-yellow-300 dark:text-yellow-300">
-            Disclaimer: This data is for informational purposes only. Data
-            accuracy is not guaranteed. Please verify all information with
-            official sources.
-          </p>
-          <button
-            onClick={handleDismissDisclaimer}
-            className="absolute top-1/2 right-2 -translate-y-1/2 rounded p-1 text-yellow-300 transition-colors hover:bg-yellow-800/50 hover:text-yellow-100"
-            aria-label="Dismiss disclaimer"
-          >
-            <X className="size-4" />
-          </button>
-        </div>
-      )}
     </header>
   );
 }
