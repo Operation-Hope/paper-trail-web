@@ -1,9 +1,23 @@
-import { getDuckDB } from '../mocks/data/factories/vote';
 import { Politician } from '../types/api';
+import { getDuckDB } from '../lib/duckdb';
 
+// 🚀 ALL BASES COVERED
+const DIME_BASE = "https://huggingface.co/datasets/Dustinhax/paper-trail-data/resolve/main";
 const VV_BASE = "https://huggingface.co/datasets/Dustinhax/tyt/resolve/main/voteview";
 
+interface RawMemberRow {
+  bioguide_id: string;
+  icpsr: number;
+  bioname: string;
+  state_abbrev: string;
+  district_code: number;
+  party_code: number;
+  chamber: string;
+  [key: string]: any;
+}
+
 export const api = {
+  // 🔍 Function 1: Search
   searchPoliticians: async (searchQuery: string): Promise<Politician[]> => {
     const db = await getDuckDB();
     if (!db) return [];
@@ -17,16 +31,22 @@ export const api = {
         ORDER BY bioname ASC LIMIT 20
       `;
       const res = await conn.query(query);
-      return res.toArray().map(row => ({
-        id: row.id, icpsr: Number(row.icpsr), name: row.full_name, full_name: row.full_name,
-        state: row.state, district: row.district_code.toString(),
+      return res.toArray().map((row: any) => ({
+        id: row.id,
+        canonical_id: row.id,
+        icpsr: Number(row.icpsr),
+        name: row.full_name,
+        full_name: row.full_name,
+        state: row.state,
+        district: row.district_code.toString(),
         role: row.chamber === 'House' ? 'Representative' : 'Senator',
-        chamber: row.chamber, canonical_id: row.id,
+        chamber: row.chamber,
         party: row.party_code === 100 ? 'Democrat' : (row.party_code === 200 ? 'Republican' : 'Other')
       }));
     } finally { await conn.close(); }
   },
 
+  // 🆔 Function 2: Detail Lookup (Fixes "Politician Not Found")
   getPoliticianById: async (id: string): Promise<Politician | null> => {
     const db = await getDuckDB();
     if (!db) return null;
@@ -39,56 +59,43 @@ export const api = {
         ORDER BY congress DESC LIMIT 1
       `;
       const res = await conn.query(query);
-      const row = res.toArray()[0];
+      const row = res.toArray()[0] as RawMemberRow;
       if (!row) return null;
+
       return {
-        id: row.bioguide_id, icpsr: Number(row.icpsr), name: row.bioname, full_name: row.bioname,
-        state: row.state_abbrev, district: row.district_code.toString(),
+        id: row.bioguide_id,
+        canonical_id: row.bioguide_id,
+        icpsr: Number(row.icpsr),
+        name: row.bioname,
+        full_name: row.bioname,
+        state: row.state_abbrev,
+        district: row.district_code.toString(),
         role: row.chamber === 'House' ? 'Representative' : 'Senator',
-        chamber: row.chamber, canonical_id: row.bioguide_id,
+        chamber: row.chamber,
         party: row.party_code === 100 ? 'Democrat' : (row.party_code === 200 ? 'Republican' : 'Other')
       };
     } finally { await conn.close(); }
   },
 
-  async getVoteHistory(icpsr: number, page: number = 1) {
-    const db = await getDuckDB();
-    if (!db || !icpsr) return { data: [], total: 0 };
-    const conn = await db.connect();
-    const limit = 20;
-    const offset = (page - 1) * limit;
-    try {
-      const countQuery = `SELECT COUNT(*) as total FROM read_parquet('${VV_BASE}/HSall_votes.parquet') v JOIN read_parquet('${VV_BASE}/HSall_rollcalls.parquet') rc ON v.rollnumber = rc.rollnumber AND v.congress = rc.congress WHERE v.icpsr = ${icpsr} AND rc.date BETWEEN '2024-01-01' AND '2024-12-31'`;
-      const query = `SELECT v.rollnumber, rc.vote_desc, rc.date, v.cast_code, rc.vote_result, rc.bill_number, v.congress FROM read_parquet('${VV_BASE}/HSall_votes.parquet') v JOIN read_parquet('${VV_BASE}/HSall_rollcalls.parquet') rc ON v.rollnumber = rc.rollnumber AND v.congress = rc.congress WHERE v.icpsr = ${icpsr} AND rc.date BETWEEN '2024-01-01' AND '2024-12-31' ORDER BY rc.date DESC LIMIT ${limit} OFFSET ${offset}`;
-      const [res, countRes] = await Promise.all([conn.query(query), conn.query(countQuery)]);
-      return { data: res.toArray().map(r => ({ billId: `${r.congress}-${r.rollnumber}`, displayId: r.bill_number || `Roll ${r.rollnumber}`, title: r.vote_desc, date: r.date, position: r.cast_code === 1 ? 'Yea' : (r.cast_code === 6 ? 'Nay' : 'Other'), result: r.vote_result })), total: Number(countRes.toArray()[0].total) };
-    } finally { await conn.close(); }
-  },
-
-  async getDonationSummary(icpsr: number, name: string, state: string) {
-    const db = await getDuckDB();
-    if (!db || !icpsr) return [];
-    const conn = await db.connect();
-    try {
-      const localUrl = `${window.location.origin}/data/contribDB_2024_organizational.parquet`;
-      const parts = name.split(',').map(p => p.trim().toUpperCase());
-      const query = `SELECT "contributor.name" as name, SUM(amount) as value FROM read_parquet('${localUrl}') WHERE UPPER("recipient.name") LIKE '%${parts[0]}%' AND UPPER("recipient.state") = '${state.toUpperCase()}' GROUP BY name ORDER BY value DESC LIMIT 5`;
-      const res = await conn.query(query);
-      return res.toArray().map(r => ({ name: r.name, value: Number(r.value) }));
-    } finally { await conn.close(); }
-  },
-
-  async getDonationBySector(_icpsr: number, name: string, _state: string) {
+  // 💰 Function 3: Donations
+  async getDonationBySector(_icpsr: number, name: string) {
     const db = await getDuckDB();
     if (!db) return [];
     const conn = await db.connect();
     try {
-      const localUrl = `${window.location.origin}/data/contribDB_2024_organizational.parquet`;
+      const hfUrl = `${DIME_BASE}/dime/contributions/organizational/contribDB_2024_organizational.parquet`;
       const parts = name.split(',').map(p => p.trim().toUpperCase());
-      const query = `SELECT "contributor.occupation" as occ, "contributor.employer" as emp, "contributor.name" as cname, SUM(amount) as value FROM read_parquet('${localUrl}') WHERE UPPER("recipient.name") LIKE '%${parts[0]}%' GROUP BY occ, emp, cname`;
+      const query = `
+        SELECT "contributor.occupation" as occ, "contributor.employer" as emp, "contributor.name" as cname, SUM(amount) as value 
+        FROM read_parquet('${hfUrl}') 
+        WHERE UPPER("recipient.name") LIKE '%${parts[0]}%' 
+        GROUP BY occ, emp, cname
+      `;
+      
       const res = await conn.query(query);
       const sectors: Record<string, number> = {};
-      res.toArray().forEach(r => {
+      
+      res.toArray().forEach((r: any) => {
         const text = `${r.occ || ''} ${r.emp || ''} ${r.cname || ''}`.toUpperCase();
         let s = 'Other / Misc';
         if (/COMMITTEE|PAC |POLITICAL|DEMOCRATIC|REPUBLICAN|DCCC|NRCC/.test(text)) s = 'Political Committees';
@@ -100,7 +107,11 @@ export const api = {
         else if (/RETIRED|HOMEMAKER|SELF|CONSULTANT|EXEC|CEO|PRESIDENT/.test(text)) s = 'Business / Ideological';
         sectors[s] = (sectors[s] || 0) + Number(r.value);
       });
-      return Object.entries(sectors).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value).slice(0, 10);
+      
+      return Object.entries(sectors)
+        .map(([name, value]) => ({ name, value }))
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 10);
     } finally { await conn.close(); }
   }
 };
