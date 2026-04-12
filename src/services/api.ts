@@ -1,10 +1,10 @@
 import { Politician } from '../types/api';
 import { getDuckDB } from '../lib/duckdb';
 
-// 🚀 ALL BASES COVERED
-const DIME_BASE = "https://huggingface.co/datasets/Dustinhax/paper-trail-data/resolve/main";
 const VV_BASE = "https://huggingface.co/datasets/Dustinhax/tyt/resolve/main/voteview";
+const DIME_BASE = "https://huggingface.co/datasets/Dustinhax/paper-trail-data/resolve/main";
 
+// 🏷️ Interface for DuckDB row results
 interface RawMemberRow {
   bioguide_id: string;
   icpsr: number;
@@ -17,7 +17,9 @@ interface RawMemberRow {
 }
 
 export const api = {
-  // 🔍 Function 1: Search
+  /**
+   * 🔍 Search Politicians
+   */
   searchPoliticians: async (searchQuery: string): Promise<Politician[]> => {
     const db = await getDuckDB();
     if (!db) return [];
@@ -46,7 +48,9 @@ export const api = {
     } finally { await conn.close(); }
   },
 
-  // 🆔 Function 2: Detail Lookup (Fixes "Politician Not Found")
+  /**
+   * 🆔 Get Politician by ID
+   */
   getPoliticianById: async (id: string): Promise<Politician | null> => {
     const db = await getDuckDB();
     if (!db) return null;
@@ -61,7 +65,6 @@ export const api = {
       const res = await conn.query(query);
       const row = res.toArray()[0] as RawMemberRow;
       if (!row) return null;
-
       return {
         id: row.bioguide_id,
         canonical_id: row.bioguide_id,
@@ -77,7 +80,66 @@ export const api = {
     } finally { await conn.close(); }
   },
 
-  // 💰 Function 3: Donations
+  /**
+   * 🗳️ Get Vote History (String-casted for perfect ICPSR matching)
+   */
+  async getVoteHistory(icpsr: number) {
+    const db = await getDuckDB();
+    if (!db || !icpsr) return { data: [], total: 0 };
+    const conn = await db.connect();
+    try {
+      const icpsrStr = Math.floor(icpsr).toString();
+      const query = `
+        SELECT 
+          CAST(v.rollnumber AS VARCHAR) as id, 
+          rc.vote_desc as title, 
+          rc.date, 
+          CAST(v.cast_code AS INTEGER) as cast_code, 
+          rc.vote_result as result
+        FROM read_parquet('${VV_BASE}/HSall_votes.parquet') v
+        LEFT JOIN read_parquet('${VV_BASE}/HSall_rollcalls.parquet') rc 
+          ON CAST(v.rollnumber AS VARCHAR) = CAST(rc.rollnumber AS VARCHAR) 
+          AND CAST(v.congress AS VARCHAR) = CAST(rc.congress AS VARCHAR)
+        WHERE CAST(v.icpsr AS VARCHAR) = '${icpsrStr}'
+        ORDER BY rc.date DESC, v.rollnumber DESC 
+        LIMIT 20
+      `;
+      const res = await conn.query(query);
+      const data = res.toArray().map((r: any) => ({
+        id: r.id,
+        title: r.title || `Roll Call #${r.id}`,
+        date: r.date || 'Recent',
+        position: r.cast_code === 1 ? 'Yea' : (r.cast_code === 6 ? 'Nay' : 'Other'),
+        result: r.result || 'Finalized'
+      }));
+      return { data, total: data.length };
+    } finally { await conn.close(); }
+  },
+
+  /**
+   * 💰 Get Top 5 Donors (Summary)
+   */
+  async getDonationSummary(_icpsr: number, name: string) {
+    const db = await getDuckDB();
+    if (!db) return [];
+    const conn = await db.connect();
+    try {
+      const hfUrl = `${DIME_BASE}/dime/contributions/organizational/contribDB_2024_organizational.parquet`;
+      const parts = name.split(',').map(p => p.trim().toUpperCase());
+      const query = `
+        SELECT "contributor.name" as name, SUM(amount) as value 
+        FROM read_parquet('${hfUrl}') 
+        WHERE UPPER("recipient.name") LIKE '%${parts[0]}%' 
+        GROUP BY name ORDER BY value DESC LIMIT 5
+      `;
+      const res = await conn.query(query);
+      return res.toArray().map((r: any) => ({ name: r.name, value: Number(r.value) }));
+    } finally { await conn.close(); }
+  },
+
+  /**
+   * 📊 Get Top 5 Donation Sectors
+   */
   async getDonationBySector(_icpsr: number, name: string) {
     const db = await getDuckDB();
     if (!db) return [];
@@ -91,7 +153,6 @@ export const api = {
         WHERE UPPER("recipient.name") LIKE '%${parts[0]}%' 
         GROUP BY occ, emp, cname
       `;
-      
       const res = await conn.query(query);
       const sectors: Record<string, number> = {};
       
@@ -111,7 +172,7 @@ export const api = {
       return Object.entries(sectors)
         .map(([name, value]) => ({ name, value }))
         .sort((a, b) => b.value - a.value)
-        .slice(0, 10);
+        .slice(0, 5); // 🚀 Updated to Top 5
     } finally { await conn.close(); }
   }
 };

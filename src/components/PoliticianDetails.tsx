@@ -63,7 +63,7 @@ export default function PoliticianDetails() {
           <DonationChart icpsrId={politician.icpsr} politicianName={politician.name} state={politician.state} />
         </section>
         <section className="lg:col-span-7 h-full">
-          <VoteHistory icpsrId={politician.icpsr} />
+          <VoteHistory icpsr={politician.icpsr} />
         </section>
       </div>
     </div>

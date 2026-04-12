@@ -3,18 +3,13 @@ import ReactDOM from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import App from './App';
 import './index.css';
-// 🚀 FIXED: Pointing to the new lib folder
 import { initializeDatabase } from './lib/duckdb';
 
 const queryClient = new QueryClient();
 
 async function prepareApp() {
-  initializeDatabase().catch((err: Error) =>
-    console.error('DuckDB failed to initialize:', err)
-  );
+  initializeDatabase().catch((err) => console.error('Database Init Failed:', err));
 }
-
-// ... (The rest of your ReactDOM.createRoot logic remains the same)
 
 const container = document.getElementById('root');
 if (container) {
@@ -26,6 +21,5 @@ if (container) {
       </QueryClientProvider>
     </React.StrictMode>
   );
-
   void prepareApp();
 }
