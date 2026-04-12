@@ -58,14 +58,13 @@ export default function PoliticianDetails() {
           </div>
         </div>
       </header>
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        <section className="lg:col-span-5 h-full">
-          <DonationChart icpsrId={politician.icpsr} politicianName={politician.name} state={politician.state} />
-        </section>
-        <section className="lg:col-span-7 h-full">
-          <VoteHistory icpsr={politician.icpsr} />
-        </section>
-      </div>
+      {/* Wrap your grid in a centered, max-width container */}
+<div className="max-w-5xl mx-auto px-4 w-full"> 
+  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
+    <DonationChart icpsr={politician.icpsr} politicianName={politician.full_name} />
+    <VoteHistory icpsr={politician.icpsr} />
+  </div>
+</div>
     </div>
   );
 }

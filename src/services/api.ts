@@ -4,21 +4,12 @@ import { getDuckDB } from '../lib/duckdb';
 const VV_BASE = "https://huggingface.co/datasets/Dustinhax/tyt/resolve/main/voteview";
 const DIME_BASE = "https://huggingface.co/datasets/Dustinhax/paper-trail-data/resolve/main";
 
-// 🏷️ Interface for DuckDB row results
-interface RawMemberRow {
-  bioguide_id: string;
-  icpsr: number;
-  bioname: string;
-  state_abbrev: string;
-  district_code: number;
-  party_code: number;
-  chamber: string;
-  [key: string]: any;
-}
+// 🏛️ Target the current 2025-2026 session
+const CURRENT_CONGRESS = 119;
 
 export const api = {
   /**
-   * 🔍 Search Politicians
+   * 🔍 Search Politicians: Strictly filtered to 119th Congress
    */
   searchPoliticians: async (searchQuery: string): Promise<Politician[]> => {
     const db = await getDuckDB();
@@ -26,11 +17,20 @@ export const api = {
     const conn = await db.connect();
     try {
       const query = `
-        SELECT bioguide_id as id, icpsr, bioname as full_name, state_abbrev as state, district_code, chamber, party_code
+        SELECT 
+          bioguide_id as id, 
+          icpsr, 
+          bioname as full_name, 
+          state_abbrev as state, 
+          district_code, 
+          chamber, 
+          party_code
         FROM read_parquet('${VV_BASE}/HSall_members.parquet')
-        WHERE congress = (SELECT MAX(congress) FROM read_parquet('${VV_BASE}/HSall_members.parquet'))
-          AND (LOWER(bioname) LIKE '%${searchQuery.toLowerCase()}%')
-        ORDER BY bioname ASC LIMIT 20
+        WHERE congress = ${CURRENT_CONGRESS}
+          AND chamber != 'President'
+          AND bioname ILIKE '%${searchQuery}%'
+        ORDER BY bioname ASC 
+        LIMIT 20
       `;
       const res = await conn.query(query);
       return res.toArray().map((row: any) => ({
@@ -49,7 +49,7 @@ export const api = {
   },
 
   /**
-   * 🆔 Get Politician by ID
+   * 🆔 Get Politician: Ensures correct ID-to-Name mapping for the 119th Congress
    */
   getPoliticianById: async (id: string): Promise<Politician | null> => {
     const db = await getDuckDB();
@@ -57,14 +57,16 @@ export const api = {
     const conn = await db.connect();
     try {
       const query = `
-        SELECT icpsr, bioname, state_abbrev, district_code, party_code, chamber, bioguide_id
+        SELECT bioguide_id, icpsr, bioname, state_abbrev, district_code, party_code, chamber
         FROM read_parquet('${VV_BASE}/HSall_members.parquet')
-        WHERE bioguide_id = '${id}' OR CAST(icpsr AS VARCHAR) = '${id}'
-        ORDER BY congress DESC LIMIT 1
+        WHERE congress = ${CURRENT_CONGRESS}
+          AND (bioguide_id = '${id}' OR CAST(icpsr AS VARCHAR) = '${id}')
+        LIMIT 1
       `;
       const res = await conn.query(query);
-      const row = res.toArray()[0] as RawMemberRow;
+      const row = res.toArray()[0];
       if (!row) return null;
+
       return {
         id: row.bioguide_id,
         canonical_id: row.bioguide_id,
@@ -81,43 +83,43 @@ export const api = {
   },
 
   /**
-   * 🗳️ Get Vote History (String-casted for perfect ICPSR matching)
+   * 🗳️ Vote History: Uses Integer casting for robust matching across sessions
    */
   async getVoteHistory(icpsr: number) {
     const db = await getDuckDB();
     if (!db || !icpsr) return { data: [], total: 0 };
     const conn = await db.connect();
     try {
-      const icpsrStr = Math.floor(icpsr).toString();
+      const safeId = Math.floor(icpsr);
       const query = `
         SELECT 
-          CAST(v.rollnumber AS VARCHAR) as id, 
-          rc.vote_desc as title, 
+          CAST(v.rollnumber AS VARCHAR) as vote_id, 
+          rc.vote_desc, 
           rc.date, 
           CAST(v.cast_code AS INTEGER) as cast_code, 
-          rc.vote_result as result
+          rc.vote_result
         FROM read_parquet('${VV_BASE}/HSall_votes.parquet') v
         LEFT JOIN read_parquet('${VV_BASE}/HSall_rollcalls.parquet') rc 
-          ON CAST(v.rollnumber AS VARCHAR) = CAST(rc.rollnumber AS VARCHAR) 
-          AND CAST(v.congress AS VARCHAR) = CAST(rc.congress AS VARCHAR)
-        WHERE CAST(v.icpsr AS VARCHAR) = '${icpsrStr}'
+          ON CAST(v.rollnumber AS INTEGER) = CAST(rc.rollnumber AS INTEGER) 
+          AND CAST(v.congress AS INTEGER) = CAST(rc.congress AS INTEGER)
+        WHERE CAST(v.icpsr AS INTEGER) = ${safeId}
         ORDER BY rc.date DESC, v.rollnumber DESC 
         LIMIT 20
       `;
       const res = await conn.query(query);
       const data = res.toArray().map((r: any) => ({
-        id: r.id,
-        title: r.title || `Roll Call #${r.id}`,
+        id: r.vote_id,
+        title: r.vote_desc || `Roll Call #${r.vote_id}`,
         date: r.date || 'Recent',
         position: r.cast_code === 1 ? 'Yea' : (r.cast_code === 6 ? 'Nay' : 'Other'),
-        result: r.result || 'Finalized'
+        result: r.vote_result || 'Finalized'
       }));
       return { data, total: data.length };
     } finally { await conn.close(); }
   },
 
   /**
-   * 💰 Get Top 5 Donors (Summary)
+   * 💰 Donation Summary: Matches donors based on recipient name parts
    */
   async getDonationSummary(_icpsr: number, name: string) {
     const db = await getDuckDB();
@@ -125,11 +127,11 @@ export const api = {
     const conn = await db.connect();
     try {
       const hfUrl = `${DIME_BASE}/dime/contributions/organizational/contribDB_2024_organizational.parquet`;
-      const parts = name.split(',').map(p => p.trim().toUpperCase());
+      const namePart = name.split(',')[0].trim().toUpperCase();
       const query = `
         SELECT "contributor.name" as name, SUM(amount) as value 
         FROM read_parquet('${hfUrl}') 
-        WHERE UPPER("recipient.name") LIKE '%${parts[0]}%' 
+        WHERE UPPER("recipient.name") LIKE '%${namePart}%' 
         GROUP BY name ORDER BY value DESC LIMIT 5
       `;
       const res = await conn.query(query);
@@ -138,7 +140,7 @@ export const api = {
   },
 
   /**
-   * 📊 Get Top 5 Donation Sectors
+   * 📊 Donation by Sector: Aggregates top 5 industries
    */
   async getDonationBySector(_icpsr: number, name: string) {
     const db = await getDuckDB();
@@ -146,16 +148,15 @@ export const api = {
     const conn = await db.connect();
     try {
       const hfUrl = `${DIME_BASE}/dime/contributions/organizational/contribDB_2024_organizational.parquet`;
-      const parts = name.split(',').map(p => p.trim().toUpperCase());
+      const namePart = name.split(',')[0].trim().toUpperCase();
       const query = `
         SELECT "contributor.occupation" as occ, "contributor.employer" as emp, "contributor.name" as cname, SUM(amount) as value 
         FROM read_parquet('${hfUrl}') 
-        WHERE UPPER("recipient.name") LIKE '%${parts[0]}%' 
+        WHERE UPPER("recipient.name") LIKE '%${namePart}%' 
         GROUP BY occ, emp, cname
       `;
       const res = await conn.query(query);
       const sectors: Record<string, number> = {};
-      
       res.toArray().forEach((r: any) => {
         const text = `${r.occ || ''} ${r.emp || ''} ${r.cname || ''}`.toUpperCase();
         let s = 'Other / Misc';
@@ -168,11 +169,10 @@ export const api = {
         else if (/RETIRED|HOMEMAKER|SELF|CONSULTANT|EXEC|CEO|PRESIDENT/.test(text)) s = 'Business / Ideological';
         sectors[s] = (sectors[s] || 0) + Number(r.value);
       });
-      
       return Object.entries(sectors)
         .map(([name, value]) => ({ name, value }))
         .sort((a, b) => b.value - a.value)
-        .slice(0, 5); // 🚀 Updated to Top 5
+        .slice(0, 5);
     } finally { await conn.close(); }
   }
 };
