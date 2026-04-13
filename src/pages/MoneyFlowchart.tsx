@@ -1,168 +1,56 @@
+import { useState, useRef, useCallback, useLayoutEffect } from 'react';
 import {
-  useState,
-  useEffect,
-  useRef,
-  useCallback,
-  useLayoutEffect,
-} from 'react';
-import {
-  AlertTriangle,
-  EyeOff,
-  DollarSign,
-  Building,
-  Users,
-  Briefcase,
-  ShieldAlert,
-  AlertOctagon,
-  X,
-  ArrowLeft,
+  Users, Briefcase, DollarSign, EyeOff, Building, ShieldAlert, X
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
 
 // --- DATA MODEL ---
 const moneyFlows = [
-  {
-    id: 'direct',
-    title: 'Direct Campaign Contributions',
-    icon: Users,
-    sources: ['Everyday Citizens', 'PACs', 'Candidate Themselves'],
-    destinations: ["Candidate's Official Campaign", 'Party Committees'],
-    risk: 'Medium',
-    disclosure: 'Yes',
-    limits: 'Yes (Strict Limits)',
-    definition: 'Money donated directly by private individuals or standard PACs to a campaign.',
-    example: "A donor giving $3,300 directly to a House candidate's campaign.",
-    flowDescription: 'This is the most straightforward and transparent way money enters politics. Because limits are strict and donors are disclosed, the risk of massive, untraceable corruption is lower.',
-  },
-  {
-    id: 'bundling',
-    title: 'Lobbyist Bundling',
-    icon: Briefcase,
-    sources: ['Wealthy Individuals', 'Corporate Executives'],
-    destinations: ["Candidate's Official Campaign"],
-    risk: 'High',
-    disclosure: 'Yes (Bundler disclosed)',
-    limits: 'Yes (Per individual, no limit on total bundle)',
-    definition: 'When a lobbyist or fundraiser gathers many individual, legally-limited checks and hands them to a candidate as one massive "bundle".',
-    example: 'A pharma lobbyist collects $500,000 in separate checks and delivers them to a Senator.',
-    flowDescription: 'While individual checks are within legal limits, the bundler gets credit for delivering massive sums of money, buying them significant influence and access.',
-  },
-  {
-    id: 'super_pac',
-    title: 'Super PACs (Independent Expenditures)',
-    icon: DollarSign,
-    sources: ['Mega-Donors', 'Corporations', 'Unions', 'Dark Money Groups'],
-    destinations: ['TV & Digital Attack Ads', 'Mailers (Independent of Campaign)'],
-    risk: 'EXTREME',
-    disclosure: 'Yes (But often funded by dark money)',
-    limits: 'No Limits',
-    definition: 'Political action committees that can raise and spend unlimited amounts of money, as long as they don\'t "coordinate" with the candidate.',
-    example: 'A Super PAC spends $10 million on ads attacking a rival candidate.',
-    flowDescription: 'Because there are no contribution limits, a single billionaire can entirely fund a Super PAC. They often act as shadow campaigns.',
-  },
-  {
-    id: 'dark_money',
-    title: 'Dark Money (501c4 & Shell LLCs)',
-    icon: EyeOff,
-    sources: ['Anonymous Mega-Donors', 'Corporations', 'Foreign Actors (Illegally)'],
-    destinations: ['Issue Ads', 'Super PACs', 'Political Influence Campaigns'],
-    risk: 'EXTREME',
-    disclosure: 'No (Donors hidden)',
-    limits: 'No Limits',
-    definition: 'Nonprofits or shell companies that spend money to influence elections without having to legally disclose who gave them the money.',
-    example: '"Patriot Partners LLC" spends $5M on election ads without disclosing donors.',
-    flowDescription: 'Wealthy individuals or corporations funnel unlimited money through these groups to hide their identity, making it impossible to know who is really buying influence.',
-  },
-  {
-    id: 'leadership_pac',
-    title: 'Leadership PACs & Party Transfers',
-    icon: Building,
-    sources: ['PACs', 'Other Politicians', 'Wealthy Donors'],
-    destinations: ['Allied Politicians', 'State Parties', 'Influence Building'],
-    risk: 'High',
-    disclosure: 'Yes',
-    limits: 'Yes (But highly flexible)',
-    definition: 'Personal PACs set up by politicians to fund other politicians or allies, often used to buy loyalty within a political party.',
-    example: 'A Senator uses their Leadership PAC to fund campaigns of junior lawmakers to secure leadership votes.',
-    flowDescription: 'Politicians use these funds to build massive networks of influence among their peers. It acts as a legal slush fund for political power brokering.',
-  },
-  {
-    id: 'illicit',
-    title: 'Illicit & Grey-Area Money',
-    icon: ShieldAlert,
-    sources: ['Foreign Nationals', 'Criminal Enterprises', 'Hidden Actors'],
-    destinations: ['Campaigns (via Straw Donors)', 'Dark Money Ads'],
-    risk: 'EXTREME',
-    disclosure: 'Hidden / Illegal',
-    limits: 'Illegal (No effective limit)',
-    definition: 'Money funneled illegally into U.S. elections using fake names (straw donors), foreign entities, or untraceable transactions.',
-    example: 'A foreign billionaire funnels $1M through a shell LLC to a candidate.',
-    flowDescription: 'Despite laws against it, loopholes in corporate transparency allow illicit money to quietly influence elections.',
-  },
+  { id: 'direct', title: 'Direct Contributions', icon: Users, sources: ['Everyday Citizens', 'Standard PACs'], destinations: ["Candidate Campaign", 'Party Committees'], risk: 'Medium', disclosure: 'Yes', limits: 'Strict Limits', definition: 'Money donated directly by private individuals or standard PACs to a campaign.', example: "A donor giving $3,300 directly to a House candidate's campaign.", flowDescription: 'The most transparent way money enters politics. Risk is lower due to strict limits.' },
+  { id: 'bundling', title: 'Lobbyist Bundling', icon: Briefcase, sources: ['Wealthy Individuals', 'Corporate Executives'], destinations: ["Candidate Campaign"], risk: 'High', disclosure: 'Yes (Bundler disclosed)', limits: 'No limit on total bundle', definition: 'When a lobbyist gathers many individual checks and hands them over as one massive "bundle".', example: 'A pharma lobbyist collects $500,000 in separate checks for a Senator.', flowDescription: 'Bundlers get credit for delivering massive sums, buying significant influence.' },
+  { id: 'super_pac', title: 'Super PACs', icon: DollarSign, sources: ['Mega-Donors', 'Corporations', 'Unions'], destinations: ['Attack Ads', 'Digital Influence'], risk: 'EXTREME', disclosure: 'Yes (But often Dark Money funded)', limits: 'No Limits', definition: 'Committees that can raise/spend unlimited amounts if they don\'t "coordinate" with the candidate.', example: 'A Super PAC spends $10 million on ads attacking a rival.', flowDescription: 'Allows single billionaires to fund entire shadow campaigns.' },
+  { id: 'dark_money', title: 'Dark Money', icon: EyeOff, sources: ['Anonymous Donors', 'Shell LLCs'], destinations: ['Issue Ads', 'Super PACs'], risk: 'EXTREME', disclosure: 'No (Donors hidden)', limits: 'No Limits', definition: 'Nonprofits or shell companies that spend money without disclosing the original donor.', example: '"Patriot Partners LLC" spends $5M without disclosing donors.', flowDescription: 'Makes it impossible to know who is really buying influence.' },
+  { id: 'leadership_pac', title: 'Leadership PACs', icon: Building, sources: ['Other Politicians', 'PACs'], destinations: ['Allied Politicians', 'Loyalty Building'], risk: 'High', disclosure: 'Yes', limits: 'Highly Flexible', definition: 'Personal PACs set up by politicians to fund allies and buy loyalty within the party.', example: 'A Senator uses their PAC to fund junior lawmakers to secure leadership votes.', flowDescription: 'Acts as a legal slush fund for political power brokering.' },
+  { id: 'illicit', title: 'Illicit Money', icon: ShieldAlert, sources: ['Foreign Nationals', 'Criminal Actors'], destinations: ['Straw Donors', 'Hidden Ads'], risk: 'EXTREME', disclosure: 'Hidden / Illegal', limits: 'Illegal', definition: 'Money funneled illegally into U.S. elections using fake names (straw donors), foreign entities, or untraceable transactions.', example: 'A foreign billionaire funnels $1M through a shell LLC.', flowDescription: 'Loopholes in corporate transparency allow illicit money to quietly influence elections.' },
 ];
 
-// --- COMPONENTS ---
-
-const RiskBadge = ({ risk, size = 'normal' }: { risk: string; size?: string }) => {
+const RiskBadge = ({ risk }: { risk: string }) => {
   const styles: Record<string, string> = {
-    Low: 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400 border-green-300 dark:border-green-800',
-    Medium: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400 border-yellow-300 dark:border-yellow-800',
-    High: 'bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-400 border-orange-300 dark:border-orange-800',
-    EXTREME: 'bg-purple-100 dark:bg-purple-900/30 text-purple-900 dark:text-purple-400 border-purple-500 dark:border-purple-800 animate-pulse font-bold',
+    Medium: 'bg-yellow-900/30 text-yellow-400 border-yellow-800',
+    High: 'bg-orange-900/30 text-orange-400 border-orange-800',
+    EXTREME: 'bg-purple-900/30 text-purple-400 border-purple-800 animate-pulse font-bold',
   };
-
-  const sizeClasses = size === 'small' ? 'px-2 py-0.5 text-xs' : 'px-3 py-1 text-sm';
-  const iconSize = size === 'small' ? 12 : 14;
-
-  return (
-    <span className={`${sizeClasses} flex w-max items-center gap-1 rounded-full border ${styles[risk] || ''}`}>
-      {risk === 'EXTREME' ? <AlertOctagon size={iconSize} /> : <AlertTriangle size={iconSize} />}
-      {risk} Risk
-    </span>
-  );
+  return <span className={`px-2 py-0.5 text-[10px] flex items-center gap-1 rounded-full border uppercase tracking-tighter ${styles[risk] || ''}`}>{risk} Risk</span>;
 };
 
-const EcosystemMap = ({ onVehicleClick }: { onVehicleClick: (id: string) => void }) => {
+export default function MoneyFlowchart() {
+  const [activeModalId, setActiveModalId] = useState<string | null>(null);
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const nodeRefs = useRef<Record<string, HTMLElement>>({});
   const [lines, setLines] = useState<any[]>([]);
-  const [hoveredNode, setHoveredNode] = useState<string | null>(null);
 
-  const uniqueSources = Array.from(new Set(moneyFlows.flatMap((f) => f.sources)));
-  const uniqueDests = Array.from(new Set(moneyFlows.flatMap((f) => f.destinations)));
+  const activeFlow = moneyFlows.find((f) => f.id === activeModalId);
 
   const updateLines = useCallback(() => {
     if (!containerRef.current) return;
     const containerRect = containerRef.current.getBoundingClientRect();
     const newLines: any[] = [];
-
     const getCoords = (id: string, side: 'left' | 'right') => {
       const el = nodeRefs.current[id];
       if (!el) return null;
       const rect = el.getBoundingClientRect();
-      return {
-        x: rect[side === 'left' ? 'left' : 'right'] - containerRect.left,
-        y: rect.top + rect.height / 2 - containerRect.top,
-      };
+      return { x: rect[side === 'left' ? 'left' : 'right'] - containerRect.left, y: rect.top + rect.height / 2 - containerRect.top };
     };
 
     moneyFlows.forEach((flow) => {
-      const vId = `v-${flow.id}`;
-      const vLeft = getCoords(vId, 'left');
-      const vRight = getCoords(vId, 'right');
-
+      const vId = `v-${flow.id}`, vLeft = getCoords(vId, 'left'), vRight = getCoords(vId, 'right');
       flow.sources.forEach((s) => {
-        const sId = `s-${s}`;
-        const sCoords = getCoords(sId, 'right');
-        if (sCoords && vLeft)
-          newLines.push({ id: `${sId}-${vId}`, from: sCoords, to: vLeft, sourceId: sId, vehicleId: vId });
+        const sId = `s-${flow.id}-${s}`, sCoords = getCoords(sId, 'right');
+        if (sCoords && vLeft) newLines.push({ id: `${sId}-${vId}`, from: sCoords, to: vLeft, vehicleId: flow.id });
       });
-
       flow.destinations.forEach((d) => {
-        const dId = `d-${d}`;
-        const dCoords = getCoords(dId, 'left');
-        if (vRight && dCoords)
-          newLines.push({ id: `${vId}-${dId}`, from: vRight, to: dCoords, vehicleId: vId, destId: dId });
+        const dId = `d-${flow.id}-${d}`, dCoords = getCoords(dId, 'left');
+        if (vRight && dCoords) newLines.push({ id: `${vId}-${dId}`, from: vRight, to: dCoords, vehicleId: flow.id });
       });
     });
     setLines(newLines);
@@ -171,140 +59,81 @@ const EcosystemMap = ({ onVehicleClick }: { onVehicleClick: (id: string) => void
   useLayoutEffect(() => {
     const timer = setTimeout(updateLines, 100);
     window.addEventListener('resize', updateLines);
-    return () => {
-      clearTimeout(timer);
-      window.removeEventListener('resize', updateLines);
-    };
-  }, [updateLines]);
-
-  const getLineStyles = (line: any) => {
-    if (!hoveredNode) return 'stroke-slate-300 dark:stroke-slate-600 opacity-40 stroke-[2]';
-    const isActive = line.vehicleId === hoveredNode || line.sourceId === hoveredNode || line.destId === hoveredNode;
-    return isActive ? 'stroke-blue-500 dark:stroke-blue-400 opacity-100 stroke-[3] drop-shadow-md z-50' : 'stroke-slate-200 dark:stroke-slate-800 opacity-10 stroke-[1]';
-  };
+    return () => { clearTimeout(timer); window.removeEventListener('resize', updateLines); };
+  }, [updateLines, hoveredId]);
 
   return (
-    <div className="bg-card relative w-full overflow-hidden rounded-2xl border p-4 shadow-xl md:p-8" ref={containerRef}>
-      <svg className="pointer-events-none absolute inset-0 h-full w-full">
-        {lines.map((line) => (
-          <path
-            key={line.id}
-            d={`M ${line.from.x} ${line.from.y} C ${line.from.x + 40} ${line.from.y}, ${line.to.x - 40} ${line.to.y}, ${line.to.x} ${line.to.y}`}
-            fill="none"
-            className={`transition-all duration-300 ${getLineStyles(line)}`}
-          />
-        ))}
-      </svg>
-
-      <div className="relative z-10 grid grid-cols-1 gap-12 md:grid-cols-3">
-        <div className="space-y-3">
-          <h3 className="text-muted-foreground mb-4 text-center text-xs font-bold tracking-widest uppercase">Sources</h3>
-          {uniqueSources.map((s) => (
-            <div
-              key={s}
-              ref={(el) => { if (el) nodeRefs.current[`s-${s}`] = el; }}
-              onMouseEnter={() => setHoveredNode(`s-${s}`)}
-              onMouseLeave={() => setHoveredNode(null)}
-              className="bg-background rounded-lg border p-3 text-center text-sm transition-all hover:border-blue-400"
-            >
-              {s}
-            </div>
-          ))}
-        </div>
-        <div className="flex flex-col justify-center space-y-6">
-          <h3 className="mb-2 text-center text-xs font-bold tracking-widest text-blue-600 uppercase">Money Vehicles</h3>
-          {moneyFlows.map((flow) => (
-            <div
-              key={flow.id}
-              ref={(el) => { if (el) nodeRefs.current[`v-${flow.id}`] = el; }}
-              onClick={() => onVehicleClick(flow.id)}
-              onMouseEnter={() => setHoveredNode(`v-${flow.id}`)}
-              onMouseLeave={() => setHoveredNode(null)}
-              className="bg-background flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 p-4 shadow transition-all hover:border-blue-500"
-            >
-              <span className="text-center text-sm font-bold">{flow.title}</span>
-              <RiskBadge risk={flow.risk} size="small" />
-            </div>
-          ))}
-        </div>
-        <div className="flex flex-col justify-center space-y-3">
-          <h3 className="text-muted-foreground mb-4 text-center text-xs font-bold tracking-widest uppercase">Impacts</h3>
-          {uniqueDests.map((d) => (
-            <div
-              key={d}
-              ref={(el) => { if (el) nodeRefs.current[`d-${d}`] = el; }}
-              onMouseEnter={() => setHoveredNode(`d-${d}`)}
-              onMouseLeave={() => setHoveredNode(null)}
-              className="bg-background rounded-lg border p-3 text-center text-sm transition-all hover:border-blue-400"
-            >
-              {d}
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-export default function MoneyFlowchart() {
-  const [activeModalId, setActiveModalId] = useState<string | null>(null);
-  const activeFlow = moneyFlows.find((f) => f.id === activeModalId);
-
-  return (
-    <div className="mx-auto max-w-6xl space-y-8 px-4 py-4">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="space-y-1">
-        </div>
-
-        <div className="flex items-center gap-3">
+    <div className="min-h-screen bg-black text-white selection:bg-[#4A90E2]/30">
+      <main className="min-h-[calc(100vh-80px)] bg-zinc-950/50 pt-16">
         
+        {/* Hero Slogan - Kept within padding */}
+        <div className="max-w-6xl mx-auto px-4 text-center mb-24 space-y-4">
+          <h2 className="text-4xl md:text-5xl font-black uppercase tracking-tighter text-white">
+            LEARN HOW MONEY <span className="text-zinc-500 italic">FLOWS</span> IN POLITICS
+          </h2>
+          <div className="h-1 w-24 bg-[#4A90E2] mx-auto rounded-full" />
         </div>
-      </div>
 
-      <EcosystemMap onVehicleClick={(id) => setActiveModalId(id)} />
+        {/* 🚀 FULL WIDTH STICKY HEADER */}
+        <div className="sticky top-20 z-50 w-full bg-black/95 backdrop-blur-xl border-b border-white/5 py-8">
+          <div className="max-w-6xl mx-auto px-4 grid grid-cols-3">
+            <h3 className="text-lg font-black uppercase tracking-widest text-zinc-600 text-left">Sources</h3>
+            <h3 className="text-lg font-black uppercase tracking-widest text-[#4A90E2] text-center">Money Vehicles</h3>
+            <h3 className="text-lg font-black uppercase tracking-widest text-zinc-600 text-right">Impacts</h3>
+          </div>
+        </div>
 
-      {activeModalId && activeFlow && (
-        <div
-          className="bg-background/80 fixed inset-0 z-50 flex items-center justify-center p-6 backdrop-blur-sm"
-          onClick={() => setActiveModalId(null)}
-        >
-          <div
-            className="bg-card animate-in fade-in zoom-in w-full max-w-2xl space-y-6 rounded-2xl border p-8 shadow-2xl duration-200"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-start justify-between">
-              <div className="space-y-2">
-                <div className="flex items-center gap-3">
-                  <div className="rounded-lg bg-blue-100 p-2 text-blue-600 dark:bg-blue-900/30">
-                    <activeFlow.icon size={24} />
+        {/* Flowchart Container */}
+        <div className="max-w-6xl mx-auto px-4 py-16">
+          <div className="relative p-12 rounded-3xl border border-white/5 bg-zinc-950/50" ref={containerRef}>
+            <svg className="pointer-events-none absolute inset-0 h-full w-full z-0">
+              {lines.map((line) => (
+                <path key={line.id} d={`M ${line.from.x} ${line.from.y} C ${line.from.x + 60} ${line.from.y}, ${line.to.x - 60} ${line.to.y}, ${line.to.x} ${line.to.y}`} fill="none" className={`transition-all duration-500 ${hoveredId === line.vehicleId ? 'stroke-[#4A90E2] opacity-100 stroke-[3] drop-shadow-[0_0_8px_rgba(74,144,226,0.8)]' : 'stroke-transparent opacity-0'}`} />
+              ))}
+            </svg>
+
+            <div className="space-y-12 relative z-10">
+              {moneyFlows.map((flow) => (
+                <div key={flow.id} className="relative flex items-center justify-center min-h-[140px]" onMouseEnter={() => setHoveredId(flow.id)} onMouseLeave={() => setHoveredId(null)}>
+                  <div className={`absolute left-0 flex flex-col items-end gap-3 transition-all duration-300 transform ${hoveredId === flow.id ? 'opacity-100 translate-x-0 scale-100' : 'opacity-0 translate-x-8 scale-90 pointer-events-none'}`}>
+                    {flow.sources.map(s => <div key={s} ref={(el) => { if (el) nodeRefs.current[`s-${flow.id}-${s}`] = el; }} className="bg-zinc-900 border border-white/10 px-5 py-2.5 rounded-xl text-sm font-black uppercase tracking-tight text-zinc-300 whitespace-nowrap shadow-2xl">{s}</div>)}
                   </div>
-                  <h2 className="text-2xl font-bold">{activeFlow.title}</h2>
+                  <div ref={(el) => { if (el) nodeRefs.current[`v-${flow.id}`] = el; }} onClick={() => setActiveModalId(flow.id)} className={`z-20 w-80 cursor-pointer flex flex-col items-center gap-4 rounded-2xl border p-7 transition-all duration-300 ${hoveredId === flow.id ? 'bg-zinc-900 border-[#4A90E2] shadow-[0_0_50px_rgba(74,144,226,0.2)] scale-110' : 'bg-zinc-950 border-white/5 grayscale opacity-30'}`}>
+                    <span className="text-center text-sm font-black uppercase tracking-tight text-white leading-tight">{flow.title}</span>
+                    <RiskBadge risk={flow.risk} />
+                  </div>
+                  <div className={`absolute right-0 flex flex-col items-start gap-3 transition-all duration-300 transform ${hoveredId === flow.id ? 'opacity-100 translate-x-0 scale-100' : 'opacity-0 -translate-x-8 scale-90 pointer-events-none'}`}>
+                    {flow.destinations.map(d => <div key={d} ref={(el) => { if (el) nodeRefs.current[`d-${flow.id}-${d}`] = el; }} className="bg-zinc-900 border border-white/10 px-5 py-2.5 rounded-xl text-sm font-black uppercase tracking-tight text-zinc-300 whitespace-nowrap shadow-2xl">{d}</div>)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </main>
+
+      {/* Detail Modal */}
+      {activeModalId && activeFlow && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 backdrop-blur-md bg-black/60" onClick={() => setActiveModalId(null)}>
+          <div className="bg-zinc-950 w-full max-w-2xl space-y-6 rounded-3xl border border-white/10 p-10 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start justify-between">
+              <div className="space-y-3">
+                <div className="flex items-center gap-4">
+                  <div className="rounded-xl bg-[#4A90E2]/10 p-3 text-[#4A90E2] border border-[#4A90E2]/20"><activeFlow.icon size={28} /></div>
+                  <h2 className="text-2xl font-black uppercase tracking-tighter">{activeFlow.title}</h2>
                 </div>
                 <RiskBadge risk={activeFlow.risk} />
               </div>
-              <button onClick={() => setActiveModalId(null)} className="hover:bg-muted rounded-md p-1">
-                <X />
-              </button>
+              <button onClick={() => setActiveModalId(null)} className="hover:bg-zinc-900 rounded-full p-2 transition-colors border border-white/5 text-zinc-500 hover:text-white"><X size={18} /></button>
             </div>
-
-            <div className="space-y-4">
-              <p className="text-lg leading-relaxed font-medium">{activeFlow.definition}</p>
-              <div className="bg-muted rounded-xl border p-4 text-sm italic">
-                "Example: {activeFlow.example}"
-              </div>
+            <div className="space-y-6">
+              <p className="text-xl leading-relaxed font-bold text-zinc-200">{activeFlow.definition}</p>
+              <div className="bg-zinc-900/50 rounded-2xl border border-white/5 p-6 text-sm italic text-zinc-400">"Example: {activeFlow.example}"</div>
             </div>
-
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div className="bg-muted/50 rounded-xl border p-4">
-                <span className="mb-1 block font-bold text-blue-600">Public Disclosure?</span>
-                {activeFlow.disclosure}
-              </div>
-              <div className="bg-muted/50 rounded-xl border p-4">
-                <span className="mb-1 block font-bold text-blue-600">Donation Limits?</span>
-                {activeFlow.limits}
-              </div>
+            <div className="grid grid-cols-2 gap-6 text-[11px] font-black uppercase tracking-widest">
+              <div className="bg-zinc-900 rounded-2xl border border-white/5 p-5"><span className="mb-2 block text-[#4A90E2]">Public Disclosure?</span><span className="text-zinc-300">{activeFlow.disclosure}</span></div>
+              <div className="bg-zinc-900 rounded-2xl border border-white/5 p-5"><span className="mb-2 block text-[#4A90E2]">Donation Limits?</span><span className="text-zinc-300">{activeFlow.limits}</span></div>
             </div>
-            <p className="text-muted-foreground text-sm">{activeFlow.flowDescription}</p>
           </div>
         </div>
       )}
