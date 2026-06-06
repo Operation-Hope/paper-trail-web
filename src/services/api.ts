@@ -5,8 +5,19 @@ const VV_BASE =
   'https://huggingface.co/datasets/Dustinhax/tyt/resolve/main/voteview';
 const DIME_BASE =
   'https://huggingface.co/datasets/Dustinhax/paper-trail-data/resolve/main';
-// 🚀 Setting this to >= 118 ensures we catch Sherrod Brown and other recently retired titans
-const MIN_CONGRESS = 118;
+const CURRENT_CONGRESS = 119;
+
+export interface CorrelatedDonation {
+  vote_id: string;
+  vote_desc: string;
+  vote_date: string;
+  position: string;
+  donor_name: string;
+  amount: number;
+  donation_date: string;
+  days_difference: number;
+  sector: string;
+}
 
 export const api = {
   searchPoliticians: async (searchQuery: string): Promise<Politician[]> => {
@@ -16,12 +27,11 @@ export const api = {
     try {
       const query = `
         SELECT bioguide_id as id, icpsr, bioname as full_name, state_abbrev as state, 
-               district_code, chamber, party_code, MAX(congress) as latest_congress
+               district_code, chamber, party_code
         FROM read_parquet('${VV_BASE}/HSall_members.parquet')
-        WHERE congress >= ${MIN_CONGRESS}
+        WHERE congress = ${CURRENT_CONGRESS}
           AND bioname ILIKE '%${searchQuery}%'
-        GROUP BY id, icpsr, full_name, state, district_code, chamber, party_code
-        ORDER BY latest_congress DESC, full_name ASC LIMIT 20
+        ORDER BY bioname ASC LIMIT 20
       `;
       const res = await conn.query(query);
       return res
@@ -56,9 +66,9 @@ export const api = {
       const query = `
         SELECT bioguide_id, icpsr, bioname, state_abbrev, district_code, party_code, chamber
         FROM read_parquet('${VV_BASE}/HSall_members.parquet')
-        WHERE congress >= ${MIN_CONGRESS}
+        WHERE congress = ${CURRENT_CONGRESS}
           AND (bioguide_id = '${id}' OR CAST(icpsr AS VARCHAR) = '${id}')
-        ORDER BY congress DESC LIMIT 1
+        LIMIT 1
       `;
       const res = await conn.query(query);
       const row = res.toArray()[0];
@@ -88,7 +98,7 @@ export const api = {
   async getVoteHistory(icpsr: number) {
     const db = await getDuckDB();
     if (!db || !icpsr) return { data: [], total: 0 };
-    const conn = await db.connect(); // 🚀 Fixed: Removed .current() and unused variable
+    const conn = await db.connect();
     try {
       const query = `
         SELECT CAST(v.rollnumber AS VARCHAR) as vote_id, rc.vote_desc, rc.date, 
@@ -98,7 +108,7 @@ export const api = {
           ON CAST(v.rollnumber AS INTEGER) = CAST(rc.rollnumber AS INTEGER) 
           AND CAST(v.congress AS INTEGER) = CAST(rc.congress AS INTEGER)
         WHERE CAST(v.icpsr AS INTEGER) = ${Math.floor(icpsr)}
-          AND (rc.date LIKE '2024%' OR rc.date LIKE '2025%')
+          AND rc.date LIKE '2024%'
         ORDER BY rc.date DESC, v.rollnumber DESC
       `;
       const res = await conn.query(query);
@@ -117,26 +127,24 @@ export const api = {
     }
   },
 
-  async getDonationSummary(_icpsr: number, name: string) {
+  async getDonationSummary(name: string) {
     const db = await getDuckDB();
     if (!db) return [];
     const conn = await db.connect();
     try {
       const hfUrl = `${DIME_BASE}/dime/contributions/organizational/contribDB_2024_organizational.parquet`;
-
-      const cleanName = name
-        .replace(/\(.*\)/, '')
+      const parts = name
         .replace(/[^a-zA-Z\s,]/g, '')
-        .toUpperCase();
-      const parts = cleanName.split(',').map((p) => p.trim());
+        .toUpperCase()
+        .split(',')
+        .map((p) => p.trim());
       const lastName = parts[0];
-      const firstName = parts[1]?.split(' ')[0] || '';
+      const firstName = parts[1] || '';
 
       const query = `
         SELECT "contributor.name" as name, SUM(amount) as value 
         FROM read_parquet('${hfUrl}') 
-        WHERE UPPER("recipient.name") LIKE '%${lastName}%'
-          AND (UPPER("recipient.name") LIKE '%${firstName}%' OR UPPER("recipient.name") LIKE '%${lastName}%')
+        WHERE (UPPER("recipient.name") LIKE '%${lastName}%' AND UPPER("recipient.name") LIKE '%${firstName}%')
         GROUP BY name ORDER BY value DESC LIMIT 5
       `;
       const res = await conn.query(query);
@@ -148,19 +156,19 @@ export const api = {
     }
   },
 
-  async getDonationBySector(_icpsr: number, name: string) {
+  async getDonationBySector(name: string) {
     const db = await getDuckDB();
     if (!db) return [];
     const conn = await db.connect();
     try {
       const hfUrl = `${DIME_BASE}/dime/contributions/organizational/contribDB_2024_organizational.parquet`;
-      const cleanName = name
-        .replace(/\(.*\)/, '')
+      const parts = name
         .replace(/[^a-zA-Z\s,]/g, '')
-        .toUpperCase();
-      const parts = cleanName.split(',').map((p) => p.trim());
+        .toUpperCase()
+        .split(',')
+        .map((p) => p.trim());
       const lastName = parts[0];
-      const firstName = parts[1]?.split(' ')[0] || '';
+      const firstName = parts[1] || '';
 
       const query = `
         SELECT 
@@ -169,8 +177,7 @@ export const api = {
           "contributor.name" as cname, 
           SUM(amount) as value 
         FROM read_parquet('${hfUrl}') 
-        WHERE UPPER("recipient.name") LIKE '%${lastName}%'
-          AND (UPPER("recipient.name") LIKE '%${firstName}%' OR UPPER("recipient.name") LIKE '%${lastName}%')
+        WHERE (UPPER("recipient.name") LIKE '%${lastName}%' AND UPPER("recipient.name") LIKE '%${firstName}%')
         GROUP BY "contributor.occupation", "contributor.employer", "contributor.name"
       `;
 
@@ -203,23 +210,17 @@ export const api = {
         )
           s = 'Finance & Real Estate';
         else if (
-          /PHARMA|MEDICAL|HEALTH|DOCTOR|PHYSICIAN|HOSPITAL|PFIZER|BIOTECH|DENTIST|SURGEON/.test(
-            combined
-          )
-        )
-          s = 'Health & Pharma';
-        else if (
           /TECH|GOOGLE|APPLE|META|AMAZON|SOFTWARE|MICROSOFT|TELECOM|VERIZON|AI|MEDIA|COMCAST|BROADCAST/.test(
             combined
           )
         )
           s = 'Technology & Media';
         else if (
-          /DEFENSE|BOEING|LOCKHEED|RAYTHEON|AERO|MILITARY|NORTHROP/.test(
+          /PHARMA|MEDICAL|HEALTH|DOCTOR|PHYSICIAN|HOSPITAL|PFIZER|BIOTECH|DENTIST|SURGEON/.test(
             combined
           )
         )
-          s = 'Defense & Aerospace';
+          s = 'Health & Pharma';
         else if (
           /ATTORNEY|LAWYER|LEGAL|COUNSEL|LAW FIRM|LOBBY|PARTNER/.test(combined)
         )
@@ -230,6 +231,12 @@ export const api = {
           )
         )
           s = 'Business & Ideological';
+        else if (
+          /DEFENSE|BOEING|LOCKHEED|RAYTHEON|AERO|MILITARY|NORTHROP/.test(
+            combined
+          )
+        )
+          s = 'Defense & Aerospace';
         else if (
           /UNION|TEACHER|PROFESSOR|UNIVERSITY|SCHOOL|EDU|COLLEGE|AFL-CIO/.test(
             combined
@@ -243,6 +250,140 @@ export const api = {
       return Object.entries(sectors)
         .map(([name, value]) => ({ name, value }))
         .sort((a, b) => b.value - a.value);
+    } finally {
+      await conn.close();
+    }
+  },
+
+  async getVoteCorrelatedDonations(
+    icpsr: number,
+    name: string
+  ): Promise<CorrelatedDonation[]> {
+    const db = await getDuckDB();
+    if (!db || !icpsr) return [];
+
+    const enforcedWindow = 30;
+    const conn = await db.connect();
+    try {
+      const hfUrl = `${DIME_BASE}/dime/contributions/organizational/contribDB_2024_organizational.parquet`;
+      const parts = name
+        .replace(/[^a-zA-Z\s,]/g, '')
+        .toUpperCase()
+        .split(',')
+        .map((p) => p.trim());
+      const lastName = parts[0];
+      const firstName = parts[1] || '';
+
+      const query = `
+        SELECT 
+          -- 🎯 FIX: Force the rollnumber to pull as a crisp string integer (no trailing decimals)
+          CAST(FLOOR(CAST(v.rollnumber AS DOUBLE)) AS INTEGER)::VARCHAR as vote_id,
+          rc.vote_desc,
+          rc.date as raw_vote_date,
+          CAST(v.cast_code AS INTEGER) as cast_code,
+          d."contributor.name" as donor_name,
+          d.amount,
+          d.date as raw_donation_date,
+          "contributor.occupation" as occ,
+          "contributor.employer" as emp,
+          -- 🎯 FIX: Native DuckDB date-to-date subtraction (returns raw integers cleanly)
+          ABS(CAST(rc.date AS DATE) - CAST(d.date AS DATE)) as days_difference
+        FROM read_parquet('${VV_BASE}/HSall_votes.parquet') v
+        LEFT JOIN read_parquet('${VV_BASE}/HSall_rollcalls.parquet') rc 
+          ON CAST(FLOOR(CAST(v.rollnumber AS DOUBLE)) AS INTEGER) = CAST(FLOOR(CAST(rc.rollnumber AS DOUBLE)) AS INTEGER)
+          AND CAST(v.congress AS INTEGER) = CAST(rc.congress AS INTEGER)
+        JOIN read_parquet('${hfUrl}') d
+          ON (UPPER(d."recipient.name") LIKE '%${lastName}%' AND UPPER(d."recipient.name") LIKE '%${firstName}%')
+        WHERE CAST(v.icpsr AS INTEGER) = ${Math.floor(icpsr)}
+          AND rc.date LIKE '2024%'
+          -- Strict check ensures calculations stay inside our lookback limit
+          AND ABS(CAST(rc.date AS DATE) - CAST(d.date AS DATE)) <= ${enforcedWindow}
+        ORDER BY days_difference ASC, d.amount DESC
+        LIMIT 100
+      `;
+
+      const res = await conn.query(query);
+      return res.toArray().map((r: any) => {
+        const occ = (r.occ || '').toUpperCase();
+        const emp = (r.emp || '').toUpperCase();
+        const combined = `${occ} ${emp} ${r.donor_name || ''}`.toUpperCase();
+
+        let s = 'Other / Misc';
+        if (
+          /WINRED|ACTBLUE|COMMITTEE|PAC|DCCC|NRCC|VICTORY|PARTY|POLITICAL|FEDERAL/.test(
+            combined
+          )
+        )
+          s = 'Political Committees';
+        else if (
+          /OIL|GAS|ENERGY|PETROLEUM|EXXON|CHEVRON|MINING|UTILITY|COAL|POWER|DRILLING|EXPLORATION|GEOLOGY|BP|SHELL/.test(
+            combined
+          )
+        )
+          s = 'Energy & Resources';
+        else if (
+          /BANK|FINANCE|EQUITY|INVEST|CAPITAL|REALTOR|REAL ESTATE|INSURANCE|WALL STREET|GOLDMAN|MORGAN|HEDGE|ADVISOR/.test(
+            combined
+          )
+        )
+          s = 'Finance & Real Estate';
+        else if (
+          /TECH|GOOGLE|APPLE|META|AMAZON|SOFTWARE|MICROSOFT|TELECOM|VERIZON|AI|MEDIA|COMCAST|BROADCAST/.test(
+            combined
+          )
+        )
+          s = 'Technology & Media';
+        else if (
+          /PHARMA|MEDICAL|HEALTH|DOCTOR|PHYSICIAN|HOSPITAL|PFIZER|BIOTECH|DENTIST|SURGEON/.test(
+            combined
+          )
+        )
+          s = 'Health & Pharma';
+        else if (
+          /ATTORNEY|LAWYER|LEGAL|COUNSEL|LAW FIRM|LOBBY|PARTNER/.test(combined)
+        )
+          s = 'Lawyers & Lobbyists';
+        else if (
+          /OWNER|CEO|PRESIDENT|EXECUTIVE|CHAIRMAN|BUSINESS|SELF|RETIRED|HOMEMAKER/.test(
+            combined
+          )
+        )
+          s = 'Business & Ideological';
+        else if (
+          /DEFENSE|BOEING|LOCKHEED|RAYTHEON|AERO|MILITARY|NORTHROP/.test(
+            combined
+          )
+        )
+          s = 'Defense & Aerospace';
+        else if (
+          /UNION|TEACHER|PROFESSOR|UNIVERSITY|SCHOOL|EDU|COLLEGE|AFL-CIO/.test(
+            combined
+          )
+        )
+          s = 'Labor & Education';
+
+        // Safe conversion mappings for the UI display layout
+        const voteDateStr = r.raw_vote_date ? r.raw_vote_date.toString() : '';
+        const donationDateStr = r.raw_donation_date
+          ? r.raw_donation_date.toString().substring(0, 10)
+          : '';
+
+        return {
+          vote_id: r.vote_id,
+          vote_desc: r.vote_desc || `Vote #${r.vote_id}`,
+          vote_date: voteDateStr,
+          position:
+            r.cast_code === 1 ? 'Yea' : r.cast_code === 6 ? 'Nay' : 'Other',
+          donor_name: r.donor_name,
+          amount: Number(r.amount),
+          donation_date: donationDateStr,
+          days_difference:
+            r.days_difference !== null && r.days_difference !== undefined
+              ? Number(r.days_difference)
+              : 0,
+          sector: s,
+        };
+      });
     } finally {
       await conn.close();
     }
