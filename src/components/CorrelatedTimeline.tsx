@@ -7,6 +7,26 @@ interface CorrelatedTimelineProps {
   politicianName: string;
 }
 
+// Clean helper utility function to extract proximity labels dynamically
+const getProximityLabel = (item: CorrelatedDonation) => {
+  if (item.days_difference === 0 || item.timeline_direction === 'same_day') {
+    return 'Same Day';
+  }
+  const directionLabel = item.timeline_direction === 'before' ? 'Before' : 'After';
+  return `${item.days_difference}d ${directionLabel}`;
+};
+
+// Component style mappings based on timeline direction properties
+const getProximityStyles = (item: CorrelatedDonation) => {
+  if (item.days_difference === 0 || item.timeline_direction === 'same_day') {
+    return 'border-amber-500/20 bg-amber-500/10 text-amber-400';
+  }
+  if (item.timeline_direction === 'before') {
+    return 'border-orange-500/20 bg-orange-500/10 text-orange-400';
+  }
+  return 'border-indigo-500/20 bg-indigo-500/10 text-indigo-400';
+};
+
 export function CorrelatedTimeline({
   icpsr,
   politicianName,
@@ -18,7 +38,7 @@ export function CorrelatedTimeline({
     async function fetchCorrelations() {
       setLoading(true);
       try {
-        // Hard-coded to exactly 30 days
+        // Fetches backend data tied to the strict 30-day window limits
         const results = await api.getVoteCorrelatedDonations(
           icpsr,
           politicianName
@@ -31,7 +51,7 @@ export function CorrelatedTimeline({
       }
     }
     fetchCorrelations();
-  }, [icpsr, politicianName]); // Runs once when the politician changes
+  }, [icpsr, politicianName]);
 
   return (
     <div className="bg-card space-y-6 rounded-2xl border border-white/10 p-6">
@@ -58,16 +78,12 @@ export function CorrelatedTimeline({
       ) : data.length === 0 ? (
         <div className="rounded-xl border border-dashed border-white/5 py-12 text-center">
           <p className="text-sm text-white/40">
-            No corporate donations found within a 30-day frame of any 2024
-            votes.
+            No corporate donations found within a 30-day frame of any 2024 votes.
           </p>
         </div>
       ) : (
         <div className="custom-scrollbar max-h-[500px] space-y-4 overflow-y-auto pr-2">
           {data.map((item, index) => {
-            const isBefore =
-              new Date(item.donation_date) <= new Date(item.vote_date);
-
             return (
               <div
                 key={`${item.vote_id}-${index}`}
@@ -103,16 +119,12 @@ export function CorrelatedTimeline({
                 {/* Center Badge: The Time Proximity Metric */}
                 <div className="flex justify-start lg:col-span-2 lg:justify-center">
                   <span
-                    className={`flex items-center gap-1 rounded-full border px-2.5 py-1 font-mono text-[11px] font-bold ${
-                      isBefore
-                        ? 'border-amber-500/20 bg-amber-500/10 text-amber-400'
-                        : 'border-indigo-500/20 bg-indigo-500/10 text-indigo-400'
-                    }`}
+                    className={`flex items-center gap-1 rounded-full border px-2.5 py-1 font-mono text-[11px] font-bold ${getProximityStyles(
+                      item
+                    )}`}
                   >
                     <ArrowRightLeft className="h-3 w-3" />
-                    {item.days_difference === 0
-                      ? 'Same Day'
-                      : `${item.days_difference}d ${isBefore ? 'Before' : 'After'}`}
+                    {getProximityLabel(item)}
                   </span>
                 </div>
 
