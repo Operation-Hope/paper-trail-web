@@ -4,12 +4,15 @@ import { api } from '../services/api';
 import { Politician } from '../types/api';
 import { DonationChart } from './DonationChart';
 import { VoteHistory } from './VoteHistory';
-import { CorrelatedTimeline } from '../components/CorrelatedTimeline'; // 🚀 Added import
+import { CorrelatedTimeline } from '../components/CorrelatedTimeline';
 import { Loader2, MapPin, GraduationCap, Building2 } from 'lucide-react';
 import { useEffect } from 'react';
 
 export default function PoliticianDetails() {
   const { id } = useParams<{ id: string }>();
+
+  // 💡 DEVELOPER TOGGLE: Set to true if you ever want to bring back the charts/history cards!
+  const showLegacySections = false;
 
   const {
     data: politician,
@@ -54,15 +57,19 @@ export default function PoliticianDetails() {
     <div className="animate-in fade-in mx-auto max-w-7xl space-y-8 px-4 py-8 duration-700">
       <header className="border-primary/5 bg-card rounded-3xl border p-10 shadow-sm">
         <div className="space-y-6">
+          {/* 🌟 UPDATED: Scaled text from text-[10px] to text-sm */}
           <div className="bg-primary/5 border-primary/10 inline-flex items-center gap-3 rounded-full border px-4 py-1.5">
-            <span className="text-primary text-[10px] font-black tracking-[0.2em] uppercase">
+            <span className="text-primary text-sm font-black tracking-[0.2em] uppercase">
               {politician.party} • {politician.role}
             </span>
           </div>
+
           <h1 className="text-6xl leading-none font-black tracking-tighter">
             {politician.name}
           </h1>
-          <div className="text-muted-foreground/60 flex flex-wrap items-center gap-8 text-[11px] font-black tracking-widest uppercase">
+
+          {/* 🌟 UPDATED: Scaled geography typography from text-[11px] to text-sm, and removed the ICPSR block */}
+          <div className="text-muted-foreground/60 flex flex-wrap items-center gap-8 text-sm font-black tracking-widest uppercase">
             <div className="flex items-center gap-2">
               <MapPin className="text-primary h-4 w-4 opacity-70" />
               <span>{politician.state}</span>
@@ -71,26 +78,24 @@ export default function PoliticianDetails() {
               <Building2 className="text-primary h-4 w-4 opacity-70" />
               <span>District {politician.district}</span>
             </div>
-            <div className="flex items-center gap-2">
-              <GraduationCap className="text-primary h-4 w-4 opacity-70" />
-              <span>ICPSR: {politician.icpsr}</span>
-            </div>
           </div>
         </div>
       </header>
 
       {/* Structured Max-Width Layout Area */}
       <div className="mx-auto w-full max-w-5xl space-y-6 px-4">
-        {/* Analytics Section Grid */}
-        <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <DonationChart
-            icpsr={politician.icpsr}
-            politicianName={politician.full_name}
-          />
-          <VoteHistory icpsr={politician.icpsr} />
-        </div>
+        {/* Analytics Section Grid (Conditionally Controlled by showLegacySections Variable) */}
+        {showLegacySections && (
+          <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <DonationChart
+              icpsr={politician.icpsr}
+              politicianName={politician.full_name}
+            />
+            <VoteHistory icpsr={politician.icpsr} />
+          </div>
+        )}
 
-        {/* 🚀 NEW: Vote-Donation Proximity Tracker Flow */}
+        {/* Vote-Donation Proximity Tracker Flow (Always Visible) */}
         <CorrelatedTimeline
           icpsr={politician.icpsr}
           politicianName={politician.full_name}
