@@ -20,7 +20,6 @@ export interface CorrelatedDonation {
   timeline_direction: 'before' | 'after' | 'same_day';
 }
 
-// Interface defining the brand-new runtime filtering criteria options
 export interface TimelineFilters {
   search?: string;
   sector?: string;
@@ -28,6 +27,8 @@ export interface TimelineFilters {
   sortBy?: 'proximity' | 'amount';
   hidePacs?: boolean;
 }
+
+
 
 export const api = {
   searchPoliticians: async (searchQuery: string): Promise<Politician[]> => {
