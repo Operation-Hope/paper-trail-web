@@ -213,7 +213,7 @@ export function CorrelatedTimeline({
         <div className="flex flex-col items-center justify-center py-20">
           <Loader2 className="text-primary mb-2 h-8 w-8 animate-spin" />
           <p className="font-mono text-xs tracking-widest text-white/40 uppercase">
-            Traversing Filter Subsets...
+            Loading...
           </p>
         </div>
       ) : data.length === 0 ? (
