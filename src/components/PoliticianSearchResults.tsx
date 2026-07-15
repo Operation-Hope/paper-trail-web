@@ -3,86 +3,71 @@ import { Users, ChevronRight, MapPin } from 'lucide-react';
 import { api } from '../services/api';
 import { Card, CardContent } from './ui/card';
 import { Badge } from './ui/badge';
-import type { Politician } from '../types/api'; // 🌟 Reverted to your strict types interface file
+import type { Politician } from '../types/api';
 
 interface PoliticianSearchResultsProps {
   searchQuery: string;
   onSelectPolitician: (politician: Politician) => void;
 }
 
-export function PoliticianSearchResults({
-  searchQuery,
-  onSelectPolitician,
-}: PoliticianSearchResultsProps) {
-  const { data: politicians } = useSuspenseQuery({
+export default function PoliticianSearchResults({ searchQuery, onSelectPolitician }: PoliticianSearchResultsProps) {
+  const { data: response } = useSuspenseQuery({
     queryKey: ['politicians', 'search', searchQuery],
-    queryFn: async () => {
-      const rawResults = await api.searchPoliticians(searchQuery);
-
-      // 🌟 FIXED: Map our DuckDB layout fields to satisfy your project's strict type rules
-      return rawResults.map((p) => ({
-        ...p,
-        canonical_id: String(p.id), // Satisfies the strict required 'canonical_id' constraint
-        chamber: p.role === 'Senator' ? 'Senate' : 'House',
-      })) as Politician[];
-    },
+    queryFn: () => api.searchPoliticians(searchQuery),
   });
 
-  const getPartyInfo = (party: string = '') => {
+  const politicians = Array.isArray(response) ? response : [];
+
+  const getPartyInfo = (party: string = "") => {
     const p = party.trim().toUpperCase();
-    if (p === 'R' || p.startsWith('REP'))
-      return { label: 'R', variant: 'destructive' as const };
-    if (p === 'D' || p.startsWith('DEM'))
-      return { label: 'D', variant: 'default' as const };
-    return { label: p.charAt(0) || 'I', variant: 'outline' as const };
+    if (p === 'R' || p.startsWith('REP')) return { label: "R", variant: "destructive" as const };
+    if (p === 'D' || p.startsWith('DEM')) return { label: "D", variant: "default" as const };
+    return { label: p.charAt(0) || "I", variant: "outline" as const };
   };
 
-  if (!politicians || politicians.length === 0)
-    return (
-      <Card>
-        <CardContent className="text-muted-foreground py-8 pt-6 text-center">
-          No results found.
-        </CardContent>
-      </Card>
-    );
+  if (politicians.length === 0) return (
+    <Card role="status">
+      <CardContent className="pt-6 text-center text-muted-foreground py-8">
+        No sitting politicians found matching "{searchQuery}"
+      </CardContent>
+    </Card>
+  );
 
   return (
-    <div className="grid gap-4">
-      {politicians.map((politician: Politician) => (
-        <Card
-          key={politician.id}
-          className="hover:border-primary/50 group cursor-pointer transition-all"
-          onClick={() => onSelectPolitician(politician)}
-        >
-          <CardContent className="flex items-center gap-4 p-4">
-            <div className="bg-muted group-hover:bg-primary/10 flex h-12 w-12 items-center justify-center rounded-full transition-colors">
-              <Users className="text-muted-foreground group-hover:text-primary h-6 w-6" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="mb-1 flex items-center gap-2">
-                <h3 className="truncate text-lg font-bold">
-                  {politician.full_name}
-                </h3>
-                <Badge
-                  variant={getPartyInfo(politician.party).variant}
-                  className="font-mono text-[10px]"
-                >
-                  {getPartyInfo(politician.party).label}
-                </Badge>
-              </div>
-              <div className="text-muted-foreground flex items-center gap-3 text-sm font-bold tracking-tighter uppercase opacity-60">
-                <span className="flex items-center gap-1">
-                  <MapPin className="h-3 w-3" />
-                  {politician.state}
-                </span>
-                <span>•</span>
-                <span>{politician.chamber || politician.role}</span>
-              </div>
-            </div>
-            <ChevronRight className="text-muted-foreground h-5 w-5 -translate-x-2 opacity-0 transition-all group-hover:translate-x-0 group-hover:opacity-100" />
-          </CardContent>
-        </Card>
-      ))}
-    </div>
+    <ul className="grid gap-4" role="list" aria-label="Politician search results matches">
+      {politicians.map((politician) => {
+        const partyInfo = getPartyInfo(politician.party);
+        return (
+          <li key={politician.id}>
+            <button
+              className="w-full text-left rounded-xl border border-white/5 bg-zinc-900/40 hover:border-primary/50 cursor-pointer group transition-all focus:outline-none focus:ring-2 focus:ring-[#4A90E2] block focus:bg-white/[0.04]"
+              onClick={() => onSelectPolitician(politician)}
+              aria-label={`View legislative profile summary for ${politician.full_name}, ${politician.party} representative from ${politician.state}`}
+            >
+              <CardContent className="p-4 flex items-center gap-4">
+                <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center group-hover:bg-primary/10 transition-colors" aria-hidden="true">
+                  <Users className="h-6 w-6 text-muted-foreground group-hover:text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="font-bold text-lg truncate text-white">{politician.full_name}</h3>
+                    <Badge variant={partyInfo.variant} className="text-[10px] font-mono">{partyInfo.label}</Badge>
+                  </div>
+                  <div className="flex items-center text-sm text-muted-foreground gap-3 uppercase font-bold tracking-tighter opacity-60">
+                    <span className="flex items-center gap-1">
+                      <MapPin className="h-3 w-3" aria-hidden="true" />
+                      {politician.state}
+                    </span>
+                    <span aria-hidden="true">•</span>
+                    <span>{politician.chamber}</span>
+                  </div>
+                </div>
+                <ChevronRight className="h-5 w-5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" aria-hidden="true" />
+              </CardContent>
+            </button>
+          </li>
+        );
+      })}
+    </ul>
   );
 }
