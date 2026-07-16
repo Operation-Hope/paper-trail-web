@@ -26,7 +26,20 @@ Those files are rebuilt daily from primary sources by `scripts/data_sync.py`
 
 - **Campaign contributions** — FEC bulk data for the active 2026 election cycle
   (committee/PAC contributions to candidates, refreshed nightly by the FEC).
+- **Independent expenditures** — super PAC (and other committee) money spent
+  _for or against_ candidates (FEC transaction types 24E/24A). Kept in a
+  separate file from contributions because this money is never given to the
+  candidate.
+- **Earmarked contributions** — individual donations passed through conduit
+  committees (ActBlue, WinRed, AIPAC PAC, ...), attributed to the conduit
+  (FEC type 15E, recipient-side records only, so conduit-side copies can't
+  double-count). Aggregated per conduit/candidate/day.
 - **Voting records** — VoteView (voteview.com) members, roll calls, and votes.
+
+All FEC outputs are **day-netted**: FEC files contain negative amounts from
+amended and refunded filings, so the pipeline sums per (payer, candidate, day)
+instead of assuming every row is positive; zero-net groups are dropped,
+negative day-nets are kept so cross-date corrections still cancel in totals.
 
 The sync job authenticates to Hugging Face via [Trusted Publishers](https://huggingface.co/docs/hub/trusted-publishers)
 (OIDC) rather than a stored token — the target HF dataset repo must have this

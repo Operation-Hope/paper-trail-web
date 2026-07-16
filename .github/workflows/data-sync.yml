@@ -24,8 +24,11 @@ permissions:
 
 jobs:
   sync:
+    # The earmark step downloads the FEC's ~2 GB individual-contributions
+    # archive (~8 GB extracted); the pipeline deletes each zip after
+    # extraction and the extracted file after use to stay inside runner disk.
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 120
 
     steps:
       - name: Checkout repository
