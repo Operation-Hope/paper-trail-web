@@ -100,10 +100,12 @@ export function CorrelatedTimeline({
 
     // Small bounce fallback timer to stop database flickering while typing
     const delayDebounce = setTimeout(() => {
-      fetchCorrelations();
+      void fetchCorrelations();
     }, 300);
 
-    return () => clearTimeout(delayDebounce);
+    return () => {
+      clearTimeout(delayDebounce);
+    };
   }, [
     icpsr,
     politicianName,
@@ -140,7 +142,9 @@ export function CorrelatedTimeline({
             type="text"
             placeholder="Search bills, corporate donors, PAC names... THEN PRESS ENTER"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+            }}
             className="focus:border-primary/50 w-full rounded-xl border border-white/10 bg-zinc-950 py-2.5 pr-4 pl-10 text-sm text-white placeholder-white/30 transition outline-none"
           />
         </div>
@@ -149,7 +153,9 @@ export function CorrelatedTimeline({
         <div className="lg:col-span-3">
           <select
             value={selectedSector}
-            onChange={(e) => setSelectedSector(e.target.value)}
+            onChange={(e) => {
+              setSelectedSector(e.target.value);
+            }}
             className="focus:border-primary/50 w-full rounded-xl border border-white/10 bg-zinc-950 p-2.5 text-sm text-white transition outline-none"
           >
             <option value="all">All Industry Sectors</option>
@@ -165,9 +171,9 @@ export function CorrelatedTimeline({
         <div className="lg:col-span-2">
           <select
             value={sortBy}
-            onChange={(e) =>
-              setSortBy(e.target.value as TimelineFilters['sortBy'])
-            }
+            onChange={(e) => {
+              setSortBy(e.target.value as TimelineFilters['sortBy']);
+            }}
             className="focus:border-primary/50 w-full rounded-xl border border-white/10 bg-zinc-950 p-2.5 text-sm text-white transition outline-none"
           >
             <option value="proximity">Sort by Days</option>
@@ -179,9 +185,9 @@ export function CorrelatedTimeline({
         <div className="lg:col-span-2">
           <select
             value={direction}
-            onChange={(e) =>
-              setDirection(e.target.value as TimelineFilters['direction'])
-            }
+            onChange={(e) => {
+              setDirection(e.target.value as TimelineFilters['direction']);
+            }}
             className="focus:border-primary/50 w-full rounded-xl border border-white/10 bg-zinc-950 p-2.5 text-sm text-white transition outline-none"
           >
             <option value="all">All Proximity</option>
@@ -197,7 +203,9 @@ export function CorrelatedTimeline({
             <input
               type="checkbox"
               checked={hidePacs}
-              onChange={(e) => setHidePacs(e.target.checked)}
+              onChange={(e) => {
+                setHidePacs(e.target.checked);
+              }}
               className="peer sr-only"
             />
             <div className="peer aftermarket h-5 w-9 rounded-full bg-zinc-800 peer-checked:bg-emerald-500 after:absolute after:top-[2px] after:left-[2px] after:h-4 after:w-4 after:rounded-full after:bg-zinc-400 after:transition-all after:content-[''] peer-checked:after:translate-x-full peer-checked:after:bg-white"></div>
@@ -213,7 +221,7 @@ export function CorrelatedTimeline({
         <div className="flex flex-col items-center justify-center py-20">
           <Loader2 className="text-primary mb-2 h-8 w-8 animate-spin" />
           <p className="font-mono text-xs tracking-widest text-white/40 uppercase">
-            Traversing Filter Subsets...
+            Loading...
           </p>
         </div>
       ) : data.length === 0 ? (
@@ -308,16 +316,18 @@ export function CorrelatedTimeline({
             </div>
             <div className="flex items-center gap-2">
               <button
-                onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
+                onClick={() => {
+                  setPage((prev) => Math.max(prev - 1, 1));
+                }}
                 disabled={page === 1}
                 className="flex items-center justify-center rounded-lg border border-white/10 bg-white/[0.02] p-2 text-white/80 transition hover:bg-white/[0.08] disabled:opacity-30 disabled:hover:bg-transparent"
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
               <button
-                onClick={() =>
-                  setPage((prev) => Math.min(prev + 1, totalPages))
-                }
+                onClick={() => {
+                  setPage((prev) => Math.min(prev + 1, totalPages));
+                }}
                 disabled={page === totalPages}
                 className="flex items-center justify-center rounded-lg border border-white/10 bg-white/[0.02] p-2 text-white/80 transition hover:bg-white/[0.08] disabled:opacity-30 disabled:hover:bg-transparent"
               >

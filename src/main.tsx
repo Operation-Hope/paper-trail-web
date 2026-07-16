@@ -7,8 +7,10 @@ import { initializeDatabase } from './lib/duckdb';
 
 const queryClient = new QueryClient();
 
-async function prepareApp() {
-  initializeDatabase().catch((err) => console.error('Database Init Failed:', err));
+function prepareApp() {
+  initializeDatabase().catch((err: unknown) => {
+    console.error('Database Init Failed:', err);
+  });
 }
 
 const container = document.getElementById('root');
@@ -21,5 +23,5 @@ if (container) {
       </QueryClientProvider>
     </React.StrictMode>
   );
-  void prepareApp();
+  prepareApp();
 }

@@ -16,6 +16,28 @@ This is the web frontend for the Paper Trail system, built with React 19.2 + Typ
 
 > **Note:** The backend API is currently under development. See the [paper-trail-api](https://github.com/Operation-Hope/paper-trail-api) repository for progress.
 
+## Data Pipeline
+
+The site has no backend: the browser runs DuckDB (WebAssembly) and queries Parquet
+files directly over HTTP from a Hugging Face dataset repo that we control.
+
+Those files are rebuilt daily from primary sources by `scripts/data_sync.py`
+(scheduled via `.github/workflows/data-sync.yml`):
+
+- **Campaign contributions** — FEC bulk data for the active 2026 election cycle
+  (committee/PAC contributions to candidates, refreshed nightly by the FEC).
+- **Voting records** — VoteView (voteview.com) members, roll calls, and votes.
+
+The sync job authenticates to Hugging Face via [Trusted Publishers](https://huggingface.co/docs/hub/trusted-publishers)
+(OIDC) rather than a stored token — the target HF dataset repo must have this
+workflow registered under Settings > Trusted Publishers (Provider: GitHub
+Actions, Repository: Operation-Hope/paper-trail-web, Branch: main, Workflow:
+data-sync.yml), and the workflow must keep `permissions: id-token: write`.
+To test the frontend against locally built data, run the script with
+`--skip-upload` (no auth needed), serve the output directory with CORS enabled
+(e.g. `npx http-server data_out --cors`), and set `VITE_DATA_BASE_URL` to that
+server.
+
 ## Development Setup
 
 1. Ensure Node.js 24+ is installed

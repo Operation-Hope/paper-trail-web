@@ -14,7 +14,7 @@ export function VoteHistory({ icpsr }: { icpsr: number }) {
   });
 
   // 🚀 SMART TAG LOGIC: Identifies Bill types and Procedural votes
-  const getBillPrefix = (title: string, id: string) => {
+  const getBillPrefix = (title: string) => {
     if (!title) return 'VOTE';
 
     const t = title.toUpperCase();
@@ -86,7 +86,7 @@ export function VoteHistory({ icpsr }: { icpsr: number }) {
       {/* 🚀 Header: Matched to 2024 Contributions Style */}
       <div className="border-b border-white/5 bg-zinc-900/20 p-5">
         <h3 className="text-xs font-black tracking-[0.15em] text-zinc-400 uppercase">
-          2024 Voting Record
+          119th Congress Voting Record
         </h3>
       </div>
 
@@ -94,13 +94,13 @@ export function VoteHistory({ icpsr }: { icpsr: number }) {
         {votes.length === 0 ? (
           <div className="flex h-40 items-center justify-center">
             <p className="text-[10px] font-bold tracking-widest text-zinc-600 uppercase italic">
-              No records found for 2024
+              No records found for the 119th Congress
             </p>
           </div>
         ) : (
           <div className="divide-y divide-white/5">
-            {votes.map((v: any, index: number) => {
-              const prefix = getBillPrefix(v.title, v.id);
+            {votes.map((v, index) => {
+              const prefix = getBillPrefix(v.title);
               return (
                 <div
                   key={`${v.id}-${index}`}

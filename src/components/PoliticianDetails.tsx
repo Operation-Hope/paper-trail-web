@@ -5,14 +5,16 @@ import { Politician } from '../types/api';
 import { DonationChart } from './DonationChart';
 import { VoteHistory } from './VoteHistory';
 import { CorrelatedTimeline } from '../components/CorrelatedTimeline';
-import { Loader2, MapPin, GraduationCap, Building2 } from 'lucide-react';
+import { Loader2, MapPin, Building2 } from 'lucide-react';
 import { useEffect } from 'react';
+
+// 💡 DEVELOPER TOGGLE: Set to true if you ever want to bring back the charts/history cards!
+const SHOW_LEGACY_SECTIONS: boolean = false;
 
 export default function PoliticianDetails() {
   const { id } = useParams<{ id: string }>();
 
-  // 💡 DEVELOPER TOGGLE: Set to true if you ever want to bring back the charts/history cards!
-  const showLegacySections = false;
+  const showLegacySections = SHOW_LEGACY_SECTIONS;
 
   const {
     data: politician,

@@ -2,12 +2,6 @@
   "$schema": "https://unpkg.com/knip@latest/schema.json",
   "entry": ["src/main.tsx"],
   "project": ["src/**/*.{ts,tsx}"],
-  "ignore": [
-    "src/test/test-utils.tsx"
-  ],
   "ignoreExportsUsedInFile": true,
-  "ignoreDependencies": [
-    "tailwindcss",
-    "tw-animate-css"
-  ]
+  "ignoreDependencies": ["tailwindcss", "tw-animate-css"]
 }
