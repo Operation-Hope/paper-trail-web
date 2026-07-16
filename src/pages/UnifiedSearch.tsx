@@ -23,14 +23,14 @@ export default function UnifiedSearch() {
         id="main-content"
         aria-label="Main Search Hub"
       >
-        <div className="animate-in fade-in mx-auto max-w-4xl space-y-10 pt-12 duration-500">
-          <div className="space-y-2 text-center">
+        <div className="animate-in fade-in mx-auto max-w-4xl duration-500">
+          <div className="flex h-40 items-center justify-center text-center">
             <h1 className="text-6xl font-black tracking-tighter text-white uppercase">
               Corruption <span className="text-[#4A90E2]">Watch</span>
             </h1>
           </div>
 
-          <div className="relative mx-auto max-w-2xl">
+          <div className="relative mx-auto mt-6 max-w-2xl">
             <label htmlFor="politician-search-input" className="sr-only">
               Search for a sitting U.S. Senator or Representative
             </label>
@@ -84,30 +84,29 @@ export default function UnifiedSearch() {
           )}
 
           {/* Legal Disclaimer Box */}
-          <footer className="mx-auto mt-16 max-w-3xl space-y-4 border-t border-white/5 pt-8 text-xs text-zinc-500">
-            <p className="mb-8 text-center font-bold tracking-wider text-zinc-400 uppercase">
-              Legal Disclosures & Compliance Statement
-            </p>
-
+          <footer className="mx-auto mt-16 max-w-3xl space-y-4 pt-8 text-xs text-zinc-500">
             <p>
-              <strong>1. Purpose and Data Sources:</strong> Corruption Watch is
+              <strong>* Purpose and Data Sources:</strong> Corruption Watch is
               an independent, non-partisan, open-source data visualization
               platform compiled strictly for educational, journalism, and
               research transparency purposes. Legislative voting records are
-              sourced dynamically from the <em>UCLA VoteView archive</em>, and
-              campaign contribution data is compiled via automated daily sync
+              sourced dynamically from the <em>UCLA VoteView archive</em>.
+              Campaign finance data is compiled via automated daily sync
               pipelines sourcing public record filings from the{' '}
               <strong>
                 Federal Election Commission (FEC) bulk data repositories for the
                 active 2026 election cycle
               </strong>
-              . This platform is not affiliated with, funded by, or endorsed by
+              , including direct committee contributions to candidates,
+              individual contributions earmarked through conduit committees, and
+              independent expenditures made by super PACs and other committees.
+              This platform is not affiliated with, funded by, or endorsed by
               any government entity, political party, or candidate.
             </p>
 
             <p>
               <strong>
-                2. Disclaimer of Implication (No Statement of Corruption):
+                * Disclaimer of Implication (No Statement of Corruption):
               </strong>{' '}
               The name &quot;Corruption Watch&quot; is a title intended to
               reflect the public interest in tracking money in politics. The
@@ -118,12 +117,19 @@ export default function UnifiedSearch() {
               political behavior, or actual corruption by any individual
               senator, representative, or donor. Many contributions and votes
               occur close together naturally due to the standard calendar of the
-              legislative cycle.
+              legislative cycle. Independent expenditures are, by law, made
+              without coordination with any candidate; their display alongside a
+              politician indicates only that the spending referenced that
+              politician&apos;s race, not that the politician received,
+              directed, or approved the funds. Contributions attributed to a
+              conduit committee reflect FEC-reported pass-throughs of individual
+              donations facilitated by that conduit, not the conduit&apos;s own
+              treasury funds.
             </p>
 
             <p>
               <strong>
-                3. Real-Time Data Discrepancies & Limitation of Liability:
+                * Real-Time Data Discrepancies & Limitation of Liability:
               </strong>{' '}
               Data is aggregated dynamically via client-side processing
               structures and provided strictly &quot;as-is&quot; and
@@ -135,24 +141,12 @@ export default function UnifiedSearch() {
                 duplicates, amendments, or submission lags inherent to the FEC
                 reporting timeline.
               </strong>{' '}
-              The creators of this platform disclaim all liability for any
-              errors, omissions, or inaccuracies in the data, or for any actions
-              taken in reliance on the information provided herein.
-            </p>
-
-            <p>
-              <strong>4. Fair Use & Takedown Requests:</strong> This website
-              displays public records under Fair Use principles for the purposes
-              of public criticism, comment, and news reporting. If you believe
-              any data is displayed in error due to an algorithmic pipeline
-              mismatch, please submit an official correction request to{' '}
-              <a
-                href="mailto:corruptionwatch@tyt.com"
-                className="text-[#4A90E2] underline hover:text-white"
-              >
-                our corrections team
-              </a>{' '}
-              with the corresponding Vote ID and Donor Name.
+              Displayed amounts are net figures: amendments and refunds reported
+              by filers are summed into totals rather than shown as separate
+              entries, and figures may shift as filings are amended. The
+              creators of this platform disclaim all liability for any errors,
+              omissions, or inaccuracies in the data, or for any actions taken
+              in reliance on the information provided herein.
             </p>
           </footer>
         </div>
