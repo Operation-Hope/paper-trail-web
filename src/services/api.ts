@@ -1,11 +1,21 @@
 import { Politician } from '../types/api';
 import { getDuckDB } from '../lib/duckdb';
 
-const VV_BASE =
-  'https://huggingface.co/datasets/Dustinhax/tyt/resolve/main/voteview';
-const DIME_BASE =
-  'https://huggingface.co/datasets/Dustinhax/paper-trail-data/resolve/main';
+// Self-hosted datasets, rebuilt daily from primary sources (FEC bulk data +
+// VoteView) by scripts/data_sync.py via .github/workflows/data-sync.yml.
+// VITE_DATA_BASE_URL overrides the base for local testing against a dev server.
+const DATA_BASE =
+  import.meta.env.VITE_DATA_BASE_URL ||
+  'https://huggingface.co/datasets/arpanbosmia/paper-trail-data/resolve/main';
+const VV_BASE = `${DATA_BASE}/voteview`;
+
+// These three must move together: the 119th Congress (2025-2027) overlaps the
+// 2026 election cycle, whose contribution data starts in January 2025.
+const CURRENT_CYCLE = 2026;
 const CURRENT_CONGRESS = 119;
+const CYCLE_START_DATE = '2025-01-03';
+
+const CONTRIBUTIONS_URL = `${DATA_BASE}/fec/contributions_${CURRENT_CYCLE}_organizational.parquet`;
 
 export interface CorrelatedDonation {
   vote_id: string;
@@ -20,6 +30,116 @@ export interface CorrelatedDonation {
   timeline_direction: 'before' | 'after' | 'same_day';
 }
 
+// Row shapes as returned by conn.query(...).toArray() for each SQL query below.
+// DuckDB-wasm types every column as `any`, so these are the cast boundary that
+// keeps the rest of each function type-checked under strictTypeChecked.
+interface MemberSearchRow {
+  id: string;
+  icpsr: number;
+  full_name: string;
+  state: string;
+  district_code: number;
+  chamber: string;
+  party_code: number;
+}
+
+interface MemberByIdRow {
+  bioguide_id: string;
+  icpsr: number;
+  bioname: string;
+  state_abbrev: string;
+  district_code: number;
+  party_code: number;
+  chamber: string;
+}
+
+interface VoteHistoryRow {
+  vote_id: string;
+  vote_desc: string | null;
+  date: string;
+  cast_code: number;
+}
+
+interface DonationSummaryRow {
+  name: string;
+  value: number;
+}
+
+interface DonationBySectorRow {
+  occ: string | null;
+  emp: string | null;
+  cname: string | null;
+  value: number;
+}
+
+interface CorrelationCountRow {
+  total_count: number;
+}
+
+interface CorrelationRow {
+  vote_id: string;
+  vote_desc: string | null;
+  vote_date: string;
+  cast_code: number;
+  donor_name: string;
+  amount: number;
+  donation_date: string;
+  occ: string | null;
+  emp: string | null;
+  days_difference: number | null;
+}
+
+function classifySector(combinedText: string): string {
+  const combined = combinedText.toUpperCase();
+  if (
+    /WINRED|ACTBLUE|COMMITTEE|PAC|DCCC|NRCC|VICTORY|PARTY|POLITICAL|FEDERAL/.test(
+      combined
+    )
+  )
+    return 'Political Committees';
+  if (
+    /OIL|GAS|ENERGY|PETROLEUM|EXXON|CHEVRON|MINING|UTILITY|COAL|POWER|DRILLING|EXPLORATION|GEOLOGY|BP|SHELL/.test(
+      combined
+    )
+  )
+    return 'Energy & Resources';
+  if (
+    /BANK|FINANCE|EQUITY|INVEST|CAPITAL|REALTOR|REAL ESTATE|INSURANCE|WALL STREET|GOLDMAN|MORGAN|HEDGE|ADVISOR/.test(
+      combined
+    )
+  )
+    return 'Finance & Real Estate';
+  if (
+    /TECH|GOOGLE|APPLE|META|AMAZON|SOFTWARE|MICROSOFT|TELECOM|VERIZON|AI|MEDIA|COMCAST|BROADCAST/.test(
+      combined
+    )
+  )
+    return 'Technology & Media';
+  if (
+    /PHARMA|MEDICAL|HEALTH|DOCTOR|PHYSICIAN|HOSPITAL|PFIZER|BIOTECH|DENTIST|SURGEON/.test(
+      combined
+    )
+  )
+    return 'Health & Pharma';
+  if (/ATTORNEY|LAWYER|LEGAL|COUNSEL|LAW FIRM|LOBBY|PARTNER/.test(combined))
+    return 'Lawyers & Lobbyists';
+  if (
+    /OWNER|CEO|PRESIDENT|EXECUTIVE|CHAIRMAN|BUSINESS|SELF|RETIRED|HOMEMAKER/.test(
+      combined
+    )
+  )
+    return 'Business & Ideological';
+  if (/DEFENSE|BOEING|LOCKHEED|RAYTHEON|AERO|MILITARY|NORTHROP/.test(combined))
+    return 'Defense & Aerospace';
+  if (
+    /UNION|TEACHER|PROFESSOR|UNIVERSITY|SCHOOL|EDU|COLLEGE|AFL-CIO/.test(
+      combined
+    )
+  )
+    return 'Labor & Education';
+  return 'Other / Misc';
+}
+
 // Interface defining the brand-new runtime filtering criteria options
 export interface TimelineFilters {
   search?: string;
@@ -32,7 +152,6 @@ export interface TimelineFilters {
 export const api = {
   searchPoliticians: async (searchQuery: string): Promise<Politician[]> => {
     const db = await getDuckDB();
-    if (!db) return [];
     const conn = await db.connect();
     try {
       const query = `
@@ -44,25 +163,23 @@ export const api = {
         ORDER BY bioname ASC LIMIT 20
       `;
       const res = await conn.query(query);
-      return res
-        .toArray()
-        .map((row: any) => ({
-          id: row.id,
-          canonical_id: row.id,
-          icpsr: Number(row.icpsr),
-          name: row.full_name,
-          full_name: row.full_name,
-          state: row.state,
-          district: row.district_code.toString(),
-          role: row.chamber === 'House' ? 'Representative' : 'Senator',
-          chamber: row.chamber,
-          party:
-            row.party_code === 100
-              ? 'Democrat'
-              : row.party_code === 200
-                ? 'Republican'
-                : 'Other',
-        }));
+      return (res.toArray() as MemberSearchRow[]).map((row) => ({
+        id: row.id,
+        canonical_id: row.id,
+        icpsr: row.icpsr,
+        name: row.full_name,
+        full_name: row.full_name,
+        state: row.state,
+        district: row.district_code.toString(),
+        role: row.chamber === 'House' ? 'Representative' : 'Senator',
+        chamber: row.chamber,
+        party:
+          row.party_code === 100
+            ? 'Democrat'
+            : row.party_code === 200
+              ? 'Republican'
+              : 'Other',
+      }));
     } finally {
       await conn.close();
     }
@@ -70,7 +187,6 @@ export const api = {
 
   getPoliticianById: async (id: string): Promise<Politician | null> => {
     const db = await getDuckDB();
-    if (!db) return null;
     const conn = await db.connect();
     try {
       const query = `
@@ -81,12 +197,12 @@ export const api = {
         LIMIT 1
       `;
       const res = await conn.query(query);
-      const row = res.toArray()[0];
-      if (!row) return null;
+      if (res.numRows === 0) return null;
+      const row = (res.toArray() as MemberByIdRow[])[0];
       return {
         id: row.bioguide_id,
         canonical_id: row.bioguide_id,
-        icpsr: Number(row.icpsr),
+        icpsr: row.icpsr,
         name: row.bioname,
         full_name: row.bioname,
         state: row.state_abbrev,
@@ -107,7 +223,7 @@ export const api = {
 
   async getVoteHistory(icpsr: number) {
     const db = await getDuckDB();
-    if (!db || !icpsr) return { data: [], total: 0 };
+    if (!icpsr) return { data: [], total: 0 };
     const conn = await db.connect();
     try {
       const query = `
@@ -118,19 +234,17 @@ export const api = {
           ON CAST(v.rollnumber AS INTEGER) = CAST(rc.rollnumber AS INTEGER) 
           AND CAST(v.congress AS INTEGER) = CAST(rc.congress AS INTEGER)
         WHERE CAST(v.icpsr AS INTEGER) = ${Math.floor(icpsr)}
-          AND rc.date LIKE '2024%'
+          AND rc.date >= '${CYCLE_START_DATE}'
         ORDER BY rc.date DESC, v.rollnumber DESC
       `;
       const res = await conn.query(query);
-      const data = res
-        .toArray()
-        .map((r: any) => ({
-          id: r.vote_id,
-          title: r.vote_desc || `Vote #${r.vote_id}`,
-          date: r.date,
-          position:
-            r.cast_code === 1 ? 'Yea' : r.cast_code === 6 ? 'Nay' : 'Other',
-        }));
+      const data = (res.toArray() as VoteHistoryRow[]).map((r) => ({
+        id: r.vote_id,
+        title: r.vote_desc || `Vote #${r.vote_id}`,
+        date: r.date,
+        position:
+          r.cast_code === 1 ? 'Yea' : r.cast_code === 6 ? 'Nay' : 'Other',
+      }));
       return { data, total: data.length };
     } finally {
       await conn.close();
@@ -139,10 +253,9 @@ export const api = {
 
   async getDonationSummary(name: string) {
     const db = await getDuckDB();
-    if (!db) return [];
     const conn = await db.connect();
     try {
-      const hfUrl = `${DIME_BASE}/dime/contributions/organizational/contribDB_2024_organizational.parquet`;
+      const hfUrl = CONTRIBUTIONS_URL;
       const parts = name
         .replace(/[^a-zA-Z\s,]/g, '')
         .toUpperCase()
@@ -158,9 +271,10 @@ export const api = {
         GROUP BY name ORDER BY value DESC LIMIT 5
       `;
       const res = await conn.query(query);
-      return res
-        .toArray()
-        .map((r: any) => ({ name: r.name, value: Number(r.value) }));
+      return (res.toArray() as DonationSummaryRow[]).map((r) => ({
+        name: r.name,
+        value: r.value,
+      }));
     } finally {
       await conn.close();
     }
@@ -168,10 +282,9 @@ export const api = {
 
   async getDonationBySector(name: string) {
     const db = await getDuckDB();
-    if (!db) return [];
     const conn = await db.connect();
     try {
-      const hfUrl = `${DIME_BASE}/dime/contributions/organizational/contribDB_2024_organizational.parquet`;
+      const hfUrl = CONTRIBUTIONS_URL;
       const parts = name
         .replace(/[^a-zA-Z\s,]/g, '')
         .toUpperCase()
@@ -194,67 +307,12 @@ export const api = {
       const res = await conn.query(query);
       const sectors: Record<string, number> = {};
 
-      res.toArray().forEach((r: any) => {
-        const occ = (r.occ || '').toUpperCase();
-        const emp = (r.emp || '').toUpperCase();
-        const combined = `${occ} ${emp} ${r.cname || ''}`.toUpperCase();
-
-        let s = 'Other / Misc';
-
-        if (
-          /WINRED|ACTBLUE|COMMITTEE|PAC|DCCC|NRCC|VICTORY|PARTY|POLITICAL|FEDERAL/.test(
-            combined
-          )
-        )
-          s = 'Political Committees';
-        else if (
-          /OIL|GAS|ENERGY|PETROLEUM|EXXON|CHEVRON|MINING|UTILITY|COAL|POWER|DRILLING|EXPLORATION|GEOLOGY|BP|SHELL/.test(
-            combined
-          )
-        )
-          s = 'Energy & Resources';
-        else if (
-          /BANK|FINANCE|EQUITY|INVEST|CAPITAL|REALTOR|REAL ESTATE|INSURANCE|WALL STREET|GOLDMAN|MORGAN|HEDGE|ADVISOR/.test(
-            combined
-          )
-        )
-          s = 'Finance & Real Estate';
-        else if (
-          /TECH|GOOGLE|APPLE|META|AMAZON|SOFTWARE|MICROSOFT|TELECOM|VERIZON|AI|MEDIA|COMCAST|BROADCAST/.test(
-            combined
-          )
-        )
-          s = 'Technology & Media';
-        else if (
-          /PHARMA|MEDICAL|HEALTH|DOCTOR|PHYSICIAN|HOSPITAL|PFIZER|BIOTECH|DENTIST|SURGEON/.test(
-            combined
-          )
-        )
-          s = 'Health & Pharma';
-        else if (
-          /ATTORNEY|LAWYER|LEGAL|COUNSEL|LAW FIRM|LOBBY|PARTNER/.test(combined)
-        )
-          s = 'Lawyers & Lobbyists';
-        else if (
-          /OWNER|CEO|PRESIDENT|EXECUTIVE|CHAIRMAN|BUSINESS|SELF|RETIRED|HOMEMAKER/.test(
-            combined
-          )
-        )
-          s = 'Business & Ideological';
-        else if (
-          /DEFENSE|BOEING|LOCKHEED|RAYTHEON|AERO|MILITARY|NORTHROP/.test(
-            combined
-          )
-        )
-          s = 'Defense & Aerospace';
-        else if (
-          /UNION|TEACHER|PROFESSOR|UNIVERSITY|SCHOOL|EDU|COLLEGE|AFL-CIO/.test(
-            combined
-          )
-        )
-          s = 'Labor & Education';
-
-        sectors[s] = (sectors[s] || 0) + Number(r.value);
+      (res.toArray() as DonationBySectorRow[]).forEach((r) => {
+        const occ = (r.occ ?? '').toUpperCase();
+        const emp = (r.emp ?? '').toUpperCase();
+        const combined = `${occ} ${emp} ${r.cname ?? ''}`;
+        const s = classifySector(combined);
+        sectors[s] = (sectors[s] || 0) + r.value;
       });
 
       return Object.entries(sectors)
@@ -274,7 +332,7 @@ export const api = {
     filters: TimelineFilters = {}
   ): Promise<{ items: CorrelatedDonation[]; total: number }> {
     const db = await getDuckDB();
-    if (!db || !icpsr) return { items: [], total: 0 };
+    if (!icpsr) return { items: [], total: 0 };
     const conn = await db.connect();
 
     // Unpack filters with default fallbacks
@@ -287,7 +345,7 @@ export const api = {
     } = filters;
 
     try {
-      const hfUrl = `${DIME_BASE}/dime/contributions/organizational/contribDB_2024_organizational.parquet`;
+      const hfUrl = CONTRIBUTIONS_URL;
       const parts = name
         .replace(/[^a-zA-Z\s,]/g, '')
         .toUpperCase()
@@ -346,12 +404,13 @@ export const api = {
         INNER JOIN read_parquet('${hfUrl}') d
           ON (UPPER(d."recipient.name") LIKE '%${lastName}%' AND UPPER(d."recipient.name") LIKE '%${firstName}%')
         WHERE CAST(v.icpsr AS INTEGER) = ${cleanICPSR}
-          AND rc.date LIKE '2024%'
+          AND rc.date >= '${CYCLE_START_DATE}'
           AND abs(date_diff('day', CAST(rc.date AS DATE), CAST(d.date AS DATE))) <= 30
           ${secondaryConditions}
       `;
       const countRes = await conn.query(countQuery);
-      const total = Number(countRes.toArray()[0]?.total_count || 0);
+      const total =
+        (countRes.toArray() as CorrelationCountRow[])[0]?.total_count ?? 0;
 
       // 2. Stream paginated and filtered chunk records
       const query = `
@@ -373,7 +432,7 @@ export const api = {
         INNER JOIN read_parquet('${hfUrl}') d
           ON (UPPER(d."recipient.name") LIKE '%${lastName}%' AND UPPER(d."recipient.name") LIKE '%${firstName}%')
         WHERE CAST(v.icpsr AS INTEGER) = ${cleanICPSR}
-          AND rc.date LIKE '2024%'
+          AND rc.date >= '${CYCLE_START_DATE}'
           AND abs(date_diff('day', CAST(rc.date AS DATE), CAST(d.date AS DATE))) <= 30
           ${secondaryConditions}
         ${orderByClause}
@@ -381,64 +440,11 @@ export const api = {
       `;
 
       const res = await conn.query(query);
-      let items = res.toArray().map((r: any) => {
-        const occ = (r.occ || '').toUpperCase();
-        const emp = (r.emp || '').toUpperCase();
-        const combined = `${occ} ${emp} ${r.donor_name || ''}`.toUpperCase();
-
-        let s = 'Other / Misc';
-        if (
-          /WINRED|ACTBLUE|COMMITTEE|PAC|DCCC|NRCC|VICTORY|PARTY|POLITICAL|FEDERAL/.test(
-            combined
-          )
-        )
-          s = 'Political Committees';
-        else if (
-          /OIL|GAS|ENERGY|PETROLEUM|EXXON|CHEVRON|MINING|UTILITY|COAL|POWER|DRILLING|EXPLORATION|GEOLOGY|BP|SHELL/.test(
-            combined
-          )
-        )
-          s = 'Energy & Resources';
-        else if (
-          /BANK|FINANCE|EQUITY|INVEST|CAPITAL|REALTOR|REAL ESTATE|INSURANCE|WALL STREET|GOLDMAN|MORGAN|HEDGE|ADVISOR/.test(
-            combined
-          )
-        )
-          s = 'Finance & Real Estate';
-        else if (
-          /TECH|GOOGLE|APPLE|META|AMAZON|SOFTWARE|MICROSOFT|TELECOM|VERIZON|AI|MEDIA|COMCAST|BROADCAST/.test(
-            combined
-          )
-        )
-          s = 'Technology & Media';
-        else if (
-          /PHARMA|MEDICAL|HEALTH|DOCTOR|PHYSICIAN|HOSPITAL|PFIZER|BIOTECH|DENTIST|SURGEON/.test(
-            combined
-          )
-        )
-          s = 'Health & Pharma';
-        else if (
-          /ATTORNEY|LAWYER|LEGAL|COUNSEL|LAW FIRM|LOBBY|PARTNER/.test(combined)
-        )
-          s = 'Lawyers & Lobbyists';
-        else if (
-          /OWNER|CEO|PRESIDENT|EXECUTIVE|CHAIRMAN|BUSINESS|SELF|RETIRED|HOMEMAKER/.test(
-            combined
-          )
-        )
-          s = 'Business & Ideological';
-        else if (
-          /DEFENSE|BOEING|LOCKHEED|RAYTHEON|AERO|MILITARY|NORTHROP/.test(
-            combined
-          )
-        )
-          s = 'Defense & Aerospace';
-        else if (
-          /UNION|TEACHER|PROFESSOR|UNIVERSITY|SCHOOL|EDU|COLLEGE|AFL-CIO/.test(
-            combined
-          )
-        )
-          s = 'Labor & Education';
+      let items = (res.toArray() as CorrelationRow[]).map((r) => {
+        const occ = (r.occ ?? '').toUpperCase();
+        const emp = (r.emp ?? '').toUpperCase();
+        const combined = `${occ} ${emp} ${r.donor_name}`;
+        const s = classifySector(combined);
 
         const vDate = r.vote_date ? new Date(r.vote_date) : null;
         const dDate = r.donation_date ? new Date(r.donation_date) : null;
@@ -457,10 +463,9 @@ export const api = {
           position:
             r.cast_code === 1 ? 'Yea' : r.cast_code === 6 ? 'Nay' : 'Other',
           donor_name: r.donor_name,
-          amount: Number(r.amount),
+          amount: r.amount,
           donation_date: r.donation_date,
-          days_difference:
-            r.days_difference !== null ? Number(r.days_difference) : 0,
+          days_difference: r.days_difference ?? 0,
           sector: s,
           timeline_direction: direction,
         };

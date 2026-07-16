@@ -1,0 +1,40 @@
+name: Data Sync
+
+# Rebuilds the site's datasets from primary sources (FEC bulk data + VoteView)
+# and uploads them to our Hugging Face dataset repo. The FEC refreshes its bulk
+# files nightly (Eastern time), so a daily run keeps the 2026-cycle data current.
+#
+# Auth: uses Hugging Face Trusted Publishers (OIDC), not a stored secret. The
+# HF dataset repo must have this workflow registered under
+# Settings > Trusted Publishers (Provider: GitHub Actions, Repository:
+# Operation-Hope/paper-trail-web, Branch: main, Workflow: data-sync.yml).
+
+on:
+  schedule:
+    - cron: '17 11 * * *' # daily, after the FEC's overnight bulk-data refresh
+  workflow_dispatch:
+
+concurrency:
+  group: data-sync
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write # required to mint the OIDC token for HF Trusted Publishers
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Install dependencies
+        run: python3 -m pip install --quiet duckdb huggingface_hub
+
+      - name: Build and upload datasets
+        run: python3 scripts/data_sync.py --cycle 2026
+        env:
+          HF_REPO: arpanbosmia/paper-trail-data
