@@ -3,9 +3,6 @@
  * Provides URL building and parsing functions for politician and donor routes.
  */
 
-import { useCallback } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-
 /**
  * Entity types supported by the routing system
  */
@@ -56,71 +53,4 @@ export function buildSearchUrl(
   const basePath = entityType === 'politician' ? '/politician' : '/donor';
   if (!searchQuery || searchQuery.trim() === '') return basePath;
   return `${basePath}?search=${encodeURIComponent(searchQuery)}`;
-}
-
-/**
- * Route state returned by useRouteState hook
- */
-interface RouteState {
-  entityId?: string;
-  searchQuery?: string;
-  comparisonIds: string[];
-  navigateToEntity: (id: string, entityType: EntityType) => Promise<void>;
-  navigateToComparison: (ids: string[]) => Promise<void>;
-  navigateToSearch: (entityType: EntityType, query?: string) => Promise<void>;
-  navigateBack: () => Promise<void>;
-}
-
-/**
- * Custom hook for URL-based state management.
- * Provides typed access to route parameters and navigation helpers.
- */
-export function useRouteState(): RouteState {
-  const navigate = useNavigate();
-  const params = useParams();
-  const [searchParams] = useSearchParams();
-
-  const navigateToEntity = useCallback(
-    async (id: string, entityType: EntityType) => {
-      const url =
-        entityType === 'politician'
-          ? buildPoliticianUrl(id)
-          : buildDonorUrl(id);
-      await navigate(url);
-    },
-    [navigate]
-  );
-
-  const navigateToComparison = useCallback(
-    async (ids: string[]) => {
-      await navigate(buildComparisonUrl(ids));
-    },
-    [navigate]
-  );
-
-  const navigateToSearch = useCallback(
-    async (entityType: EntityType, query?: string) => {
-      await navigate(buildSearchUrl(entityType, query));
-    },
-    [navigate]
-  );
-
-  const navigateBack = useCallback(async () => {
-    await navigate(-1);
-  }, [navigate]);
-
-  return {
-    // Route parameters
-    entityId: params.id,
-
-    // Query parameters
-    searchQuery: searchParams.get('search') || undefined,
-    comparisonIds: parseComparisonIds(searchParams.get('ids')),
-
-    // Navigation helpers (memoized to prevent unnecessary re-renders)
-    navigateToEntity,
-    navigateToComparison,
-    navigateToSearch,
-    navigateBack,
-  };
 }

@@ -7,9 +7,14 @@ export async function getDuckDB() {
 
   const JSDELIVR_BUNDLES = duckdb.getJsDelivrBundles();
   const bundle = await duckdb.selectBundle(JSDELIVR_BUNDLES);
+  if (!bundle.mainWorker) {
+    throw new Error('duckdb-wasm: selected bundle has no mainWorker script');
+  }
 
   const worker_url = URL.createObjectURL(
-    new Blob([`importScripts("${bundle.mainWorker!}");`], { type: 'text/javascript' })
+    new Blob([`importScripts("${bundle.mainWorker}");`], {
+      type: 'text/javascript',
+    })
   );
 
   const worker = new Worker(worker_url);
