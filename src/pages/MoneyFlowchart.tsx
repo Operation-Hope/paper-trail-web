@@ -264,20 +264,20 @@ export default function MoneyFlowchart() {
         </div>
 
         {/* 🚀 FULL WIDTH STICKY HEADER */}
-        <div className="sticky top-20 z-50 w-full border-b border-white/5 bg-black/95 py-6 backdrop-blur-xl">
-          <div className="mx-auto flex max-w-3xl items-start justify-between gap-8 px-4">
-            <h2 className="pt-1 text-lg font-black tracking-widest text-zinc-400 uppercase">
+        <div className="sticky top-20 z-40 w-full border-b border-white/5 bg-black/95 py-4 backdrop-blur-xl md:top-28 md:py-6">
+          <div className="mx-auto flex max-w-3xl items-start justify-between gap-4 px-4 md:gap-8">
+            <h2 className="pt-1 text-sm font-black tracking-widest text-zinc-400 uppercase md:text-lg">
               Sources
             </h2>
             <div className="text-center">
-              <h2 className="text-lg font-black tracking-widest text-[#4A90E2] uppercase">
+              <h2 className="text-sm font-black tracking-widest text-[#4A90E2] uppercase md:text-lg">
                 Money Vehicles
               </h2>
-              <p className="mt-1 text-xs text-zinc-400">
+              <p className="mt-1 text-[11px] text-zinc-400 md:text-xs">
                 Click on each money vehicle to learn more.
               </p>
             </div>
-            <h2 className="pt-1 text-lg font-black tracking-widest text-zinc-400 uppercase">
+            <h2 className="pt-1 text-sm font-black tracking-widest text-zinc-400 uppercase md:text-lg">
               Impacts
             </h2>
           </div>
@@ -296,9 +296,10 @@ export default function MoneyFlowchart() {
                   key={flow.id}
                   className="group grid grid-cols-1 items-center gap-4 md:grid-cols-[1fr_auto_1fr] md:gap-6"
                 >
-                  {/* Sources -> */}
+                  {/* Sources -> (always visible on touch screens; hover/focus
+                      reveal is a pointer-device nicety, gated to md+) */}
                   <ul
-                    className="flex flex-col gap-2.5 opacity-0 transition-all duration-300 group-focus-within:translate-x-0 group-focus-within:opacity-100 group-hover:translate-x-0 group-hover:opacity-100 motion-safe:-translate-x-3 md:items-end"
+                    className="flex flex-col gap-2.5 transition-all duration-300 motion-reduce:transition-none md:-translate-x-3 md:items-end md:opacity-0 md:group-focus-within:translate-x-0 md:group-focus-within:opacity-100 md:group-hover:translate-x-0 md:group-hover:opacity-100"
                     aria-label={`Where ${flow.title} comes from`}
                   >
                     {flow.sources.map((s) => (
@@ -356,7 +357,7 @@ export default function MoneyFlowchart() {
 
                   {/* -> Impacts */}
                   <ul
-                    className="flex flex-col items-start gap-2.5 opacity-0 transition-all duration-300 group-focus-within:translate-x-0 group-focus-within:opacity-100 group-hover:translate-x-0 group-hover:opacity-100 motion-safe:translate-x-3"
+                    className="flex flex-col items-start gap-2.5 transition-all duration-300 motion-reduce:transition-none md:translate-x-3 md:opacity-0 md:group-focus-within:translate-x-0 md:group-focus-within:opacity-100 md:group-hover:translate-x-0 md:group-hover:opacity-100"
                     aria-label={`Where ${flow.title} goes`}
                   >
                     {flow.destinations.map((d) => (
