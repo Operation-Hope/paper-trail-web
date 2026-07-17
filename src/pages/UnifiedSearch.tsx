@@ -1,14 +1,30 @@
 import { useNavigate } from 'react-router-dom';
 // 🎯 FIXED: Changed from named import to default import to resolve TS2614
 import PoliticianSearchResults from '../components/PoliticianSearchResults';
-import { useState, Suspense } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { Politician } from '../types/api';
 import { Search, Loader2 } from 'lucide-react';
 import { Input } from '../components/ui/input';
 
 export default function UnifiedSearch() {
   const [searchQuery, setSearchQuery] = useState('');
+  const [isNarrow, setIsNarrow] = useState(false);
   const navigate = useNavigate();
+
+  // Placeholders can't wrap, and the full prompt physically can't fit a
+  // phone-width input on one line — so phones get a shorter prompt (the
+  // sr-only label keeps the full wording for screen readers).
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 639px)');
+    const update = () => {
+      setIsNarrow(mq.matches);
+    };
+    update();
+    mq.addEventListener('change', update);
+    return () => {
+      mq.removeEventListener('change', update);
+    };
+  }, []);
 
   const handleSelect = (politician: Politician) => {
     if (!politician.id) return;
@@ -45,8 +61,12 @@ export default function UnifiedSearch() {
             <Input
               id="politician-search-input"
               type="search"
-              className="bg-card focus-visible:ring-primary/20 h-14 rounded-2xl border-white/10 pl-12 text-lg text-white placeholder-white/50 focus:ring-2 focus:ring-[#4A90E2] focus:outline-none"
-              placeholder="Search for a sitting U.S. Senator, House Representative, or 2028 presidential candidate ..."
+              className="bg-card focus-visible:ring-primary/20 h-14 rounded-2xl border-white/10 pl-12 text-lg text-white placeholder-white/50 placeholder:text-sm focus:ring-2 focus:ring-[#4A90E2] focus:outline-none sm:placeholder:text-lg"
+              placeholder={
+                isNarrow
+                  ? 'Search politicians & 2028 candidates ...'
+                  : 'Search for a sitting U.S. Senator, House Representative, or 2028 presidential candidate ...'
+              }
               onChange={(e) => {
                 setSearchQuery(e.target.value);
               }}
