@@ -11,7 +11,10 @@ export default function UnifiedSearch() {
   const navigate = useNavigate();
 
   const handleSelect = (politician: Politician) => {
-    if (politician.id) {
+    if (!politician.id) return;
+    if (politician.id.startsWith('2028-')) {
+      void navigate(`/candidate/${politician.id.slice(5)}`);
+    } else {
       void navigate(`/politician/${politician.id}`);
     }
   };
@@ -32,7 +35,8 @@ export default function UnifiedSearch() {
 
           <div className="relative mx-auto mt-6 max-w-2xl">
             <label htmlFor="politician-search-input" className="sr-only">
-              Search for a sitting U.S. Senator or Representative
+              Search for a sitting U.S. Senator, House Representative, or 2028
+              presidential candidate
             </label>
             <Search
               className="absolute top-1/2 left-4 h-5 w-5 -translate-y-1/2 text-zinc-500"
@@ -42,13 +46,12 @@ export default function UnifiedSearch() {
               id="politician-search-input"
               type="search"
               className="bg-card focus-visible:ring-primary/20 h-14 rounded-2xl border-white/10 pl-12 text-lg text-white placeholder-white/50 focus:ring-2 focus:ring-[#4A90E2] focus:outline-none"
-              placeholder="Search for a sitting U.S. Senator or Representative ..."
+              placeholder="Search for a sitting U.S. Senator, House Representative, or 2028 presidential candidate ..."
               onChange={(e) => {
                 setSearchQuery(e.target.value);
               }}
               value={searchQuery}
               aria-controls="search-results-region"
-              aria-expanded={searchQuery.length > 0}
             />
           </div>
 
@@ -59,7 +62,7 @@ export default function UnifiedSearch() {
               role="region"
               aria-live="polite"
             >
-              <h2 className="px-2 text-[10px] font-black tracking-[0.3em] text-zinc-500 uppercase">
+              <h2 className="px-2 text-[10px] font-black tracking-[0.3em] text-zinc-400 uppercase">
                 Search Results
               </h2>
               <Suspense
@@ -84,7 +87,7 @@ export default function UnifiedSearch() {
           )}
 
           {/* Legal Disclaimer Box */}
-          <footer className="mx-auto mt-16 max-w-3xl space-y-4 pt-8 text-xs text-zinc-500">
+          <footer className="mx-auto mt-16 max-w-3xl space-y-4 pt-8 text-xs text-zinc-400">
             <p>
               <strong>* Purpose and Data Sources:</strong> Corruption Watch is
               an independent, non-partisan, open-source data visualization

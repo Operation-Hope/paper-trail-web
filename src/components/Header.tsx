@@ -1,50 +1,39 @@
-import { Home, Workflow } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
+
+const navItems = [
+  { to: '/', label: 'Search' },
+  { to: '/flowcharts', label: 'Learn' },
+  { to: '/contact', label: 'Contact' },
+];
 
 export default function Header() {
   const location = useLocation();
 
-  // 🛠️ Updated for Steel Gray background: Machined Obsidian Style
-  const baseButtonStyle =
-    'p-4 rounded-xl border border-white/10 bg-zinc-950/40 hover:bg-zinc-950/60 hover:border-white/20 hover:opacity-100 transition-all flex items-center justify-center cursor-pointer';
-
   return (
     <header className="sticky top-0 z-50 border-b border-white/5 bg-zinc-800/75 backdrop-blur-md">
       <div className="mx-auto flex h-28 max-w-7xl items-center justify-center px-6">
-        {/* CENTERED TOOLBAR */}
-        <div className="flex items-center gap-12 md:gap-16">
-          {/* Home Icon Container */}
-          <Link to="/" aria-label="Home — politician search">
-            <div
-              className={`${baseButtonStyle} ${
-                location.pathname === '/'
-                  ? 'border-zinc-400/50 bg-zinc-950/80 opacity-100 shadow-lg'
-                  : 'opacity-50'
-              }`}
-            >
-              <Home
-                className="h-6 w-6 text-zinc-300 opacity-80"
-                aria-hidden="true"
-              />
-            </div>
-          </Link>
-
-          {/* Money Flow Icon Container */}
-          <Link to="/flowcharts" aria-label="Money flow charts">
-            <div
-              className={`${baseButtonStyle} ${
-                location.pathname === '/flowcharts'
-                  ? 'border-zinc-400/50 bg-zinc-950/80 opacity-100 shadow-lg'
-                  : 'opacity-50'
-              }`}
-            >
-              <Workflow
-                className="h-6 w-6 text-zinc-300 opacity-80"
-                aria-hidden="true"
-              />
-            </div>
-          </Link>
-        </div>
+        <nav aria-label="Main navigation">
+          <ul className="flex items-center gap-6 md:gap-12">
+            {navItems.map((item) => {
+              const active = location.pathname === item.to;
+              return (
+                <li key={item.to}>
+                  <Link
+                    to={item.to}
+                    aria-current={active ? 'page' : undefined}
+                    className={`block rounded-xl border px-6 py-3 text-lg font-black tracking-tighter uppercase transition-all focus-visible:ring-2 focus-visible:ring-[#4A90E2] focus-visible:outline-none md:text-xl ${
+                      active
+                        ? 'border-zinc-400/50 bg-zinc-950/80 text-white shadow-lg'
+                        : 'border-white/10 bg-zinc-950/40 text-zinc-400 hover:border-white/20 hover:bg-zinc-950/60 hover:text-white'
+                    }`}
+                  >
+                    {item.label}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </nav>
       </div>
     </header>
   );

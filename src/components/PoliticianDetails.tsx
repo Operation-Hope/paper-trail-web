@@ -4,7 +4,6 @@ import { api } from '../services/api';
 import { Politician } from '../types/api';
 import { DonationChart } from './DonationChart';
 import { VoteHistory } from './VoteHistory';
-import { CorrelatedTimeline } from '../components/CorrelatedTimeline';
 import { MoneyOverview } from '../components/MoneyOverview';
 import { WhosPaying } from '../components/WhosPaying';
 import { VotesMoneyTimeline } from '../components/VotesMoneyTimeline';
@@ -141,7 +140,7 @@ export default function PoliticianDetails() {
 
           <div className="min-w-[260px] flex-1 space-y-4">
             <div className="bg-primary/5 border-primary/10 inline-flex items-center gap-3 rounded-full border px-4 py-1.5">
-              <span className="text-primary text-sm font-black tracking-[0.2em] uppercase">
+              <span className="text-sm font-black tracking-[0.2em] text-[#4A90E2] uppercase">
                 {politician.party} • {politician.role}
               </span>
             </div>
@@ -216,12 +215,6 @@ export default function PoliticianDetails() {
 
         {/* Top contested votes by nearby money */}
         <VoteSpotlights
-          icpsr={politician.icpsr}
-          politicianName={politician.full_name}
-        />
-
-        {/* Vote-Donation Proximity Tracker Flow (Always Visible) */}
-        <CorrelatedTimeline
           icpsr={politician.icpsr}
           politicianName={politician.full_name}
         />

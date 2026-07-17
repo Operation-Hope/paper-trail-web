@@ -166,7 +166,7 @@ export function VotesMoneyTimeline({
           </p>
         </div>
         <div
-          className="inline-flex self-start overflow-hidden rounded-lg border border-white/10"
+          className="inline-flex flex-none shrink-0 self-start overflow-visible rounded-lg border border-white/10"
           role="group"
           aria-label="Money window size"
         >
@@ -178,11 +178,11 @@ export function VotesMoneyTimeline({
               onClick={() => {
                 setWindowDays(d);
               }}
-              className={`px-3 py-1.5 font-mono text-[11px] font-bold transition focus-visible:ring-2 focus-visible:ring-[#4A90E2] focus-visible:outline-none ${
+              className={`px-4 py-1.5 font-mono text-sm font-bold whitespace-nowrap transition focus-visible:ring-2 focus-visible:ring-[#4A90E2] focus-visible:outline-none ${
                 windowDays === d
                   ? 'bg-[#4A90E2]/20 text-[#8ab8ec]'
                   : 'text-white/60 hover:text-white/85'
-              } ${d !== 30 ? 'border-l border-white/10' : ''}`}
+              } ${d !== 30 ? 'border-l border-white/10' : ''} ${d === 30 ? 'rounded-l-lg' : ''} ${d === 90 ? 'rounded-r-lg' : ''}`}
             >
               ±{d}d
             </button>
@@ -190,24 +190,24 @@ export function VotesMoneyTimeline({
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-[11px] text-white/60">
-        <span className="flex items-center gap-1.5">
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-1.5 text-sm text-white/70">
+        <span className="flex items-center gap-2">
           <span
-            className="inline-block h-2 w-2 rounded-full bg-[#3987e5]"
+            className="inline-block h-2.5 w-2.5 rounded-full bg-[#3987e5]"
             aria-hidden="true"
           />
           contribution (size = amount)
         </span>
-        <span className="flex items-center gap-1.5">
+        <span className="flex items-center gap-2">
           <span
-            className="inline-block h-3 w-[2px] rounded bg-white/70"
+            className="inline-block h-3.5 w-[2px] rounded bg-white/70"
             aria-hidden="true"
           />
           roll-call vote
         </span>
-        <span className="flex items-center gap-1.5">
+        <span className="flex items-center gap-2">
           <span
-            className="inline-block h-2.5 w-4 rounded-sm border border-[#4A90E2]/50 bg-[#4A90E2]/20"
+            className="inline-block h-3 w-5 rounded-sm border border-[#4A90E2]/50 bg-[#4A90E2]/20"
             aria-hidden="true"
           />
           money window
@@ -368,11 +368,11 @@ export function VotesMoneyTimeline({
             >
               <ChevronRight className="h-4 w-4" aria-hidden="true" />
             </button>
-            <span className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-[10px] text-white/70">
+            <span className="rounded bg-white/10 px-2 py-0.5 font-mono text-sm text-white/80">
               Vote #{selected.rollnumber}
             </span>
             <span
-              className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${
+              className={`rounded px-2 py-0.5 text-sm font-bold ${
                 selected.position === 'Yea'
                   ? 'bg-emerald-500/10 text-emerald-400'
                   : selected.position === 'Nay'
@@ -383,12 +383,12 @@ export function VotesMoneyTimeline({
               Voted {selected.position}
             </span>
             {voteTally && (
-              <span className="rounded bg-white/5 px-1.5 py-0.5 font-mono text-[10px] text-white/60">
+              <span className="rounded bg-white/5 px-2 py-0.5 font-mono text-sm text-white/70">
                 {voteTally}
               </span>
             )}
             {!selected.contested && (
-              <span className="rounded border border-white/10 px-1.5 py-0.5 text-[10px] font-semibold text-white/60">
+              <span className="rounded border border-white/10 px-2 py-0.5 text-sm font-semibold text-white/60">
                 Near-unanimous
               </span>
             )}
@@ -421,6 +421,17 @@ export function VotesMoneyTimeline({
                   <span className="truncate font-semibold text-white/85">
                     {d.donor}
                   </span>
+                  {d.cmte_id && (
+                    <a
+                      href={`https://www.fec.gov/data/committee/${d.cmte_id}/`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-none text-[10px] font-semibold tracking-wide text-[#4A90E2] uppercase hover:underline focus-visible:ring-2 focus-visible:ring-[#4A90E2] focus-visible:outline-none"
+                      aria-label={`Verify ${d.donor} at FEC.gov (opens in new tab)`}
+                    >
+                      Verify at FEC.gov ↗
+                    </a>
+                  )}
                   <span className="flex-none text-[11px] text-white/60">
                     {daysLabel(d, selected)}
                   </span>
