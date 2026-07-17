@@ -3,7 +3,6 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import {
   Users,
-  ArrowRight,
   ArrowRightLeft,
   Briefcase,
   DollarSign,
@@ -254,7 +253,7 @@ export default function MoneyFlowchart() {
             Each channel below is described by three legal facts — what gets
             disclosed, what is limited, and whether coordination with the
             candidate is allowed — and marked by whether this site can show it
-            to you. Select any channel for details.
+            to you.
             {freshness?.filingsThrough && (
               <span className="mt-1 block text-xs text-zinc-400">
                 Cycle totals from FEC filings through {freshness.filingsThrough}
@@ -265,33 +264,41 @@ export default function MoneyFlowchart() {
         </div>
 
         {/* 🚀 FULL WIDTH STICKY HEADER */}
-        <div className="sticky top-20 z-50 w-full border-b border-white/5 bg-black/95 py-8 backdrop-blur-xl">
-          <div className="mx-auto grid max-w-6xl grid-cols-3 px-4">
-            <h2 className="text-left text-lg font-black tracking-widest text-zinc-400 uppercase">
+        <div className="sticky top-20 z-50 w-full border-b border-white/5 bg-black/95 py-6 backdrop-blur-xl">
+          <div className="mx-auto flex max-w-3xl items-start justify-between gap-8 px-4">
+            <h2 className="pt-1 text-lg font-black tracking-widest text-zinc-400 uppercase">
               Sources
             </h2>
-            <h2 className="text-center text-lg font-black tracking-widest text-[#4A90E2] uppercase">
-              Money Vehicles
-            </h2>
-            <h2 className="text-right text-lg font-black tracking-widest text-zinc-400 uppercase">
+            <div className="text-center">
+              <h2 className="text-lg font-black tracking-widest text-[#4A90E2] uppercase">
+                Money Vehicles
+              </h2>
+              <p className="mt-1 text-xs text-zinc-400">
+                Click on each money vehicle to learn more.
+              </p>
+            </div>
+            <h2 className="pt-1 text-lg font-black tracking-widest text-zinc-400 uppercase">
               Impacts
             </h2>
           </div>
         </div>
 
         {/* Flowchart: static three-column rows, money always flowing left to
-            right — no absolute positioning, so labels can never overlap. */}
+            right — no absolute positioning, so labels can never overlap.
+            Sources/impacts stay hidden until the row's vehicle is hovered or
+            focused; they always occupy their grid space, and the modal also
+            lists them for touch users. */}
         <div className="mx-auto max-w-6xl px-4 py-16">
           <div className="rounded-3xl border border-white/5 bg-zinc-950/50 p-6 md:p-12">
             <div className="space-y-12">
               {moneyFlows.map((flow) => (
                 <div
                   key={flow.id}
-                  className="grid grid-cols-1 items-center gap-4 md:grid-cols-[1fr_auto_1fr] md:gap-6"
+                  className="group grid grid-cols-1 items-center gap-4 md:grid-cols-[1fr_auto_1fr] md:gap-6"
                 >
                   {/* Sources -> */}
                   <ul
-                    className="flex flex-col gap-2.5 md:items-end"
+                    className="flex flex-col gap-2.5 opacity-0 transition-all duration-300 group-focus-within:translate-x-0 group-focus-within:opacity-100 group-hover:translate-x-0 group-hover:opacity-100 motion-safe:-translate-x-3 md:items-end"
                     aria-label={`Where ${flow.title} comes from`}
                   >
                     {flow.sources.map((s) => (
@@ -299,10 +306,30 @@ export default function MoneyFlowchart() {
                         <span className="rounded-xl border border-white/10 bg-zinc-900 px-4 py-2 text-xs font-black tracking-tight text-zinc-300 uppercase md:text-sm">
                           {s}
                         </span>
-                        <ArrowRight
-                          className="h-5 w-5 flex-none text-[#4A90E2]"
+                        <svg
+                          width="44"
+                          height="16"
+                          viewBox="0 0 44 16"
+                          className="flex-none text-[#4A90E2]"
                           aria-hidden="true"
-                        />
+                        >
+                          <line
+                            x1="1"
+                            y1="8"
+                            x2="36"
+                            y2="8"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                          />
+                          <polyline
+                            points="34,2 42,8 34,14"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinejoin="round"
+                            strokeLinecap="round"
+                          />
+                        </svg>
                       </li>
                     ))}
                   </ul>
@@ -314,7 +341,7 @@ export default function MoneyFlowchart() {
                       setActiveModalId(flow.id);
                     }}
                     aria-haspopup="dialog"
-                    className="flex w-full max-w-xs cursor-pointer flex-col items-center gap-3 justify-self-center rounded-2xl border border-white/10 bg-zinc-900 p-6 transition-all duration-200 hover:border-[#4A90E2] hover:shadow-[0_0_40px_rgba(74,144,226,0.15)] focus-visible:ring-2 focus-visible:ring-[#4A90E2] focus-visible:outline-none md:w-80"
+                    className="flex w-full max-w-xs cursor-pointer flex-col items-center gap-3 justify-self-center rounded-2xl border border-white/10 bg-zinc-900 p-6 transition-all duration-200 group-hover:border-[#4A90E2] group-hover:shadow-[0_0_40px_rgba(74,144,226,0.15)] focus-visible:ring-2 focus-visible:ring-[#4A90E2] focus-visible:outline-none md:w-80"
                   >
                     <span className="text-center text-sm leading-tight font-black tracking-tight text-white uppercase">
                       {flow.title}
@@ -329,15 +356,35 @@ export default function MoneyFlowchart() {
 
                   {/* -> Impacts */}
                   <ul
-                    className="flex flex-col items-start gap-2.5"
+                    className="flex flex-col items-start gap-2.5 opacity-0 transition-all duration-300 group-focus-within:translate-x-0 group-focus-within:opacity-100 group-hover:translate-x-0 group-hover:opacity-100 motion-safe:translate-x-3"
                     aria-label={`Where ${flow.title} goes`}
                   >
                     {flow.destinations.map((d) => (
                       <li key={d} className="flex items-center gap-3">
-                        <ArrowRight
-                          className="h-5 w-5 flex-none text-[#4A90E2]"
+                        <svg
+                          width="44"
+                          height="16"
+                          viewBox="0 0 44 16"
+                          className="flex-none text-[#4A90E2]"
                           aria-hidden="true"
-                        />
+                        >
+                          <line
+                            x1="1"
+                            y1="8"
+                            x2="36"
+                            y2="8"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                          />
+                          <polyline
+                            points="34,2 42,8 34,14"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinejoin="round"
+                            strokeLinecap="round"
+                          />
+                        </svg>
                         <span className="rounded-xl border border-white/10 bg-zinc-900 px-4 py-2 text-xs font-black tracking-tight text-zinc-300 uppercase md:text-sm">
                           {d}
                         </span>
