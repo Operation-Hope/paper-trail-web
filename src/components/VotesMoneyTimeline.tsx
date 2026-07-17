@@ -407,51 +407,55 @@ export function VotesMoneyTimeline({
               No PAC contributions in this window.
             </p>
           ) : (
-            <ul className="space-y-1.5 text-xs">
-              {hits.slice(0, 6).map((d, i) => (
-                <li
-                  key={`${d.date}-${d.donor}-${String(i)}`}
-                  className="flex items-baseline gap-2"
-                >
-                  <span
-                    className="h-2 w-2 flex-none self-center rounded-full"
-                    style={{ backgroundColor: sectorColor(d.sector) }}
-                    aria-hidden="true"
-                  />
-                  <span className="truncate font-semibold text-white/85">
-                    {d.donor}
-                  </span>
-                  {d.cmte_id && (
-                    <a
-                      href={`https://www.fec.gov/data/committee/${d.cmte_id}/`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex-none text-[10px] font-semibold tracking-wide text-[#4A90E2] uppercase hover:underline focus-visible:ring-2 focus-visible:ring-[#4A90E2] focus-visible:outline-none"
-                      aria-label={`Verify ${d.donor} at FEC.gov (opens in new tab)`}
+            <>
+              <div
+                className="max-h-64 overflow-y-auto pr-1.5 focus-visible:ring-2 focus-visible:ring-[#4A90E2] focus-visible:outline-none"
+                role="region"
+                aria-label="All contributions in the selected window"
+                tabIndex={0}
+              >
+                <ul className="space-y-1.5 text-xs">
+                  {hits.map((d, i) => (
+                    <li
+                      key={`${d.date}-${d.donor}-${String(i)}`}
+                      className="flex items-baseline gap-2"
                     >
-                      Verify at FEC.gov ↗
-                    </a>
-                  )}
-                  <span className="flex-none text-[11px] text-white/60">
-                    {daysLabel(d, selected)}
-                  </span>
-                  <span className="ml-auto flex-none font-mono text-emerald-400">
-                    {fmtMoney(d.amount)}
-                  </span>
-                </li>
-              ))}
-              {hits.length > 6 && (
-                <li className="text-[11px] text-white/60">
-                  + {hits.length - 6} more — see the full tracker below
-                </li>
-              )}
-              <li className="flex border-t border-white/5 pt-1.5 text-white/70">
+                      <span
+                        className="h-2 w-2 flex-none self-center rounded-full"
+                        style={{ backgroundColor: sectorColor(d.sector) }}
+                        aria-hidden="true"
+                      />
+                      <span className="truncate font-semibold text-white/85">
+                        {d.donor}
+                      </span>
+                      {d.cmte_id && (
+                        <a
+                          href={`https://www.fec.gov/data/committee/${d.cmte_id}/`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex-none text-[10px] font-semibold tracking-wide text-[#4A90E2] uppercase hover:underline focus-visible:ring-2 focus-visible:ring-[#4A90E2] focus-visible:outline-none"
+                          aria-label={`Verify ${d.donor} at FEC.gov (opens in new tab)`}
+                        >
+                          Verify at FEC.gov ↗
+                        </a>
+                      )}
+                      <span className="flex-none text-[11px] text-white/60">
+                        {daysLabel(d, selected)}
+                      </span>
+                      <span className="ml-auto flex-none font-mono text-emerald-400">
+                        {fmtMoney(d.amount)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <p className="mt-1.5 flex border-t border-white/5 pt-1.5 text-xs text-white/70">
                 {hits.length} contributions in window
                 <span className="ml-auto font-mono font-bold text-emerald-400">
                   {fmtMoney(total)}
                 </span>
-              </li>
-            </ul>
+              </p>
+            </>
           )}
         </div>
       </div>
