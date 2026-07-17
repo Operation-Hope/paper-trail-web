@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Send } from 'lucide-react';
 
-const FEEDBACK_EMAIL = 'arpanbosmia90@gmail.com';
+const FEEDBACK_EMAIL = 'hope@tyt.com';
 const FEEDBACK_SUBJECT = 'corruption watch feedback';
 
 export default function ContactPage() {
