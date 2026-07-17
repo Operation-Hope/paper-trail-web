@@ -441,10 +441,13 @@ export function VotesMoneyTimeline({
                           className="flex-none text-[10px] font-semibold tracking-wide text-[#4A90E2] uppercase hover:underline focus-visible:ring-2 focus-visible:ring-[#4A90E2] focus-visible:outline-none"
                           aria-label={`Verify ${d.donor} at FEC.gov (opens in new tab)`}
                         >
-                          Verify at FEC.gov ↗
+                          <span className="sm:hidden">Verify ↗</span>
+                          <span className="hidden sm:inline">
+                            Verify at FEC.gov ↗
+                          </span>
                         </a>
                       )}
-                      <span className="flex-none text-[11px] text-white/60">
+                      <span className="hidden flex-none text-[11px] text-white/60 sm:inline">
                         {daysLabel(d, selected)}
                       </span>
                       <span className="ml-auto flex-none font-mono text-emerald-400">
