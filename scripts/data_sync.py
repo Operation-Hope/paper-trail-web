@@ -248,7 +248,15 @@ def build_fec(con: duckdb.DuckDBPyConnection, work_dir: str, out_dir: str, cycle
                 CASE p.TRANSACTION_TP WHEN '24E' THEN 'support' ELSE 'oppose' END AS direction,
                 ANY_VALUE(COALESCE(NULLIF(TRIM(cn.CAND_NAME), ''), p.NAME)) AS "candidate.name",
                 SUM(p.TRANSACTION_AMT)                             AS amount,
-                strftime(try_strptime(p.TRANSACTION_DT, '%m%d%Y'), '%Y-%m-%d') AS date,
+                -- Some committees (UDP among them) file IEs with an empty
+                -- transaction date, which would make millions of dollars
+                -- vanish from any date-filtered total. Fall back to the
+                -- filing receipt date embedded in IMAGE_NUM (YYYYMMDD
+                -- prefix) so every dollar keeps a real, defensible date.
+                COALESCE(
+                    strftime(try_strptime(p.TRANSACTION_DT, '%m%d%Y'), '%Y-%m-%d'),
+                    strftime(try_strptime(substr(p.IMAGE_NUM, 1, 8), '%Y%m%d'), '%Y-%m-%d')
+                ) AS date,
                 p.CAND_ID                                          AS cand_id,
                 p.CMTE_ID                                          AS cmte_id,
                 p.TRANSACTION_TP                                   AS transaction_tp,

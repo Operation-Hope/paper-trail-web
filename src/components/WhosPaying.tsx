@@ -30,10 +30,9 @@ export function WhosPaying({ politicianName }: WhosPayingProps) {
       </div>
     );
   }
-  if (!data || data.topDonors.length === 0) return null;
+  if (!data || data.sectors.length === 0) return null;
 
-  const maxTotal = data.topDonors[0].total;
-  const R = 62;
+  const R = 92;
   const CIRC = 2 * Math.PI * R;
   const fracs = data.sectors.map((s) =>
     data.total > 0 ? s.value / data.total : 0
@@ -46,7 +45,7 @@ export function WhosPaying({ politicianName }: WhosPayingProps) {
 
   return (
     <section
-      aria-label="Top donors and sector breakdown"
+      aria-label="PAC money by industry sector"
       className="space-y-4 rounded-3xl border border-white/10 !bg-zinc-900/90 p-6 shadow-2xl shadow-black/80"
     >
       <div className="border-b border-white/5 pb-4">
@@ -54,116 +53,69 @@ export function WhosPaying({ politicianName }: WhosPayingProps) {
           Who&apos;s Paying
         </h2>
         <p className="text-sm text-white/50">
-          Direct PAC contributions this cycle, ranked — color marks the industry
-          sector.
+          Direct PAC contributions this cycle, by industry sector.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-5">
-        {/* Top donors bar list */}
-        <div className="lg:col-span-3">
-          <h3 className="mb-4 text-[10px] font-black tracking-[0.2em] text-white/60 uppercase">
-            Top PAC Donors
-          </h3>
-          <ol className="space-y-3">
-            {data.topDonors.map((d) => (
-              <li
-                key={d.name}
-                className="grid grid-cols-[minmax(0,11rem)_1fr_4.5rem] items-center gap-3"
-              >
-                <span className="truncate text-xs font-semibold text-white/85">
-                  {d.name}
-                  <span className="flex items-center gap-1.5 text-[9px] font-bold tracking-wider text-white/60 uppercase">
-                    <span
-                      className="h-1.5 w-1.5 flex-none rounded-full"
-                      style={{ backgroundColor: sectorColor(d.sector) }}
-                      aria-hidden="true"
-                    />
-                    <span className="truncate">{d.sector}</span>
-                  </span>
-                </span>
-                <span className="h-2.5 overflow-hidden rounded-full bg-white/5">
-                  <span
-                    className="block h-full rounded-full"
-                    style={{
-                      width: `${String(Math.max(2, (d.total / maxTotal) * 100))}%`,
-                      backgroundColor: sectorColor(d.sector),
-                    }}
-                  />
-                </span>
-                <span className="text-right font-mono text-xs text-emerald-400">
-                  {fmtMoney(d.total)}
-                </span>
-              </li>
-            ))}
-          </ol>
-        </div>
+      <div className="flex flex-wrap items-center justify-center gap-10 py-4">
+        <svg
+          width="230"
+          height="230"
+          viewBox="0 0 230 230"
+          role="img"
+          aria-label={`Donut chart: PAC contributions by sector, total ${fmtMoney(data.total)}`}
+        >
+          {segments.map((s) => (
+            <circle
+              key={s.name}
+              cx="115"
+              cy="115"
+              r={R}
+              fill="none"
+              stroke={sectorColor(s.name)}
+              strokeWidth="28"
+              strokeDasharray={`${String(Math.max(0, s.frac * CIRC - 2))} ${String(CIRC)}`}
+              transform={`rotate(${String(s.offset * 360 - 90)} 115 115)`}
+            />
+          ))}
+          <text
+            x="115"
+            y="112"
+            textAnchor="middle"
+            className="fill-white font-mono text-2xl font-black"
+          >
+            {fmtMoney(data.total)}
+          </text>
+          <text
+            x="115"
+            y="134"
+            textAnchor="middle"
+            style={{
+              fill: 'rgba(255,255,255,0.5)',
+              fontSize: '11px',
+              fontWeight: 900,
+              letterSpacing: '0.15em',
+            }}
+          >
+            PAC TOTAL
+          </text>
+        </svg>
 
-        {/* Sector donut + legend */}
-        <div className="lg:col-span-2">
-          <h3 className="mb-4 text-[10px] font-black tracking-[0.2em] text-white/60 uppercase">
-            Money by Sector
-          </h3>
-          <div className="flex flex-wrap items-center gap-5">
-            <svg
-              width="150"
-              height="150"
-              viewBox="0 0 150 150"
-              role="img"
-              aria-label={`Donut chart: PAC contributions by sector, total ${fmtMoney(data.total)}`}
-            >
-              {segments.map((s) => (
-                <circle
-                  key={s.name}
-                  cx="75"
-                  cy="75"
-                  r={R}
-                  fill="none"
-                  stroke={sectorColor(s.name)}
-                  strokeWidth="18"
-                  strokeDasharray={`${String(Math.max(0, s.frac * CIRC - 2))} ${String(CIRC)}`}
-                  transform={`rotate(${String(s.offset * 360 - 90)} 75 75)`}
-                />
-              ))}
-              <text
-                x="75"
-                y="73"
-                textAnchor="middle"
-                className="fill-white font-mono text-base font-black"
-              >
-                {fmtMoney(data.total)}
-              </text>
-              <text
-                x="75"
-                y="89"
-                textAnchor="middle"
-                style={{
-                  fill: 'rgba(255,255,255,0.5)',
-                  fontSize: '8px',
-                  fontWeight: 900,
-                  letterSpacing: '0.15em',
-                }}
-              >
-                PAC TOTAL
-              </text>
-            </svg>
-            <ul className="min-w-[150px] flex-1 space-y-1.5 text-[11px]">
-              {segments.map((s) => (
-                <li key={s.name} className="flex items-center gap-2">
-                  <span
-                    className="h-2 w-2 flex-none rounded-sm"
-                    style={{ backgroundColor: sectorColor(s.name) }}
-                    aria-hidden="true"
-                  />
-                  <span className="text-white/70">{s.name}</span>
-                  <span className="ml-auto font-mono text-white/85">
-                    {Math.round(s.frac * 100)}%
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
+        <ul className="min-w-[230px] space-y-2 text-sm">
+          {segments.map((s) => (
+            <li key={s.name} className="flex items-center gap-2.5">
+              <span
+                className="h-2.5 w-2.5 flex-none rounded-sm"
+                style={{ backgroundColor: sectorColor(s.name) }}
+                aria-hidden="true"
+              />
+              <span className="text-white/75">{s.name}</span>
+              <span className="ml-auto pl-4 font-mono text-white/90">
+                {Math.round(s.frac * 100)}%
+              </span>
+            </li>
+          ))}
+        </ul>
       </div>
     </section>
   );

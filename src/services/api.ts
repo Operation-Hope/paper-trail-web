@@ -1,6 +1,7 @@
 import { Politician } from '../types/api';
 import { getDuckDB } from '../lib/duckdb';
 import { SECTOR_OVERRIDES } from '../utils/sectorOverrides';
+import { PRESIDENTIAL_2028 } from '../data/presidential2028';
 
 // Self-hosted datasets, rebuilt daily from primary sources (FEC bulk data +
 // VoteView) by scripts/data_sync.py via .github/workflows/data-sync.yml.
@@ -27,22 +28,6 @@ const EARMARKED_URL = `${DATA_BASE}/fec/earmarked_contributions_${CURRENT_CYCLE}
 const INDEPENDENT_EXPENDITURES_URL = `${DATA_BASE}/fec/independent_expenditures_${CURRENT_CYCLE}.parquet`;
 const CANDIDATE_SUMMARY_URL = `${DATA_BASE}/fec/candidate_summary_${CURRENT_CYCLE}.parquet`;
 const META_URL = `${DATA_BASE}/meta.json`;
-
-export interface CorrelatedDonation {
-  vote_id: string;
-  vote_desc: string;
-  vote_date: string;
-  position: string;
-  donor_name: string;
-  cmte_id: string | null;
-  amount: number;
-  donation_date: string;
-  days_difference: number;
-  sector: string;
-  timeline_direction: 'before' | 'after' | 'same_day';
-  yea_count: number | null;
-  nay_count: number | null;
-}
 
 // Money a politician's campaign received or that was spent about their race,
 // split by channel. `null` per channel means that dataset isn't published yet
@@ -125,26 +110,6 @@ interface DonationBySectorRow {
   value: number;
 }
 
-interface CorrelationCountRow {
-  total_count: number;
-}
-
-interface CorrelationRow {
-  vote_id: string;
-  vote_desc: string | null;
-  vote_date: string;
-  cast_code: number;
-  donor_name: string;
-  cmte_id: string | null;
-  amount: number;
-  donation_date: string;
-  occ: string | null;
-  emp: string | null;
-  days_difference: number | null;
-  yea_count: number | null;
-  nay_count: number | null;
-}
-
 interface DirectTotalRow {
   total: number | null;
   donors: number;
@@ -223,6 +188,7 @@ export interface TimelineVote {
 export interface TimelineDonation {
   donor: string;
   sector: string;
+  cmte_id: string | null;
   amount: number;
   date: string;
 }
@@ -397,16 +363,6 @@ function classifySector(combinedText: string, cmteId?: string | null): string {
   return 'Other / Misc';
 }
 
-// Interface defining the brand-new runtime filtering criteria options
-export interface TimelineFilters {
-  search?: string;
-  sector?: string;
-  direction?: 'before' | 'after' | 'same_day' | 'all';
-  sortBy?: 'proximity' | 'amount';
-  hidePacs?: boolean;
-  hideUnanimous?: boolean;
-}
-
 export const api = {
   searchPoliticians: async (searchQuery: string): Promise<Politician[]> => {
     const db = await getDuckDB();
@@ -421,23 +377,46 @@ export const api = {
         ORDER BY bioname ASC LIMIT 20
       `;
       const res = await conn.query(query);
-      return (res.toArray() as MemberSearchRow[]).map((row) => ({
-        id: row.id,
-        canonical_id: row.id,
-        icpsr: row.icpsr,
-        name: row.full_name,
-        full_name: row.full_name,
-        state: row.state,
-        district: row.district_code.toString(),
-        role: row.chamber === 'House' ? 'Representative' : 'Senator',
-        chamber: row.chamber,
-        party:
-          row.party_code === 100
-            ? 'Democrat'
-            : row.party_code === 200
-              ? 'Republican'
-              : 'Other',
+      const members: Politician[] = (res.toArray() as MemberSearchRow[]).map(
+        (row) => ({
+          id: row.id,
+          canonical_id: row.id,
+          icpsr: row.icpsr,
+          name: row.full_name,
+          full_name: row.full_name,
+          state: row.state,
+          district: row.district_code.toString(),
+          role: row.chamber === 'House' ? 'Representative' : 'Senator',
+          chamber: row.chamber,
+          party:
+            row.party_code === 100
+              ? 'Democrat'
+              : row.party_code === 200
+                ? 'Republican'
+                : 'Other',
+        })
+      );
+
+      // Potential 2028 presidential candidates who aren't sitting members
+      // (governors, cabinet officials, former officeholders) come from a
+      // curated list; sitting members already appear via the query above.
+      const q = searchQuery.toUpperCase();
+      const presidential: Politician[] = PRESIDENTIAL_2028.filter((c) =>
+        c.name.toUpperCase().includes(q)
+      ).map((c) => ({
+        id: `2028-${c.slug}`,
+        canonical_id: `2028-${c.slug}`,
+        icpsr: 0,
+        name: c.name,
+        full_name: c.name,
+        state: c.state,
+        district: '',
+        role: '2028 Presidential Candidate',
+        chamber: '2028 Presidential Candidate',
+        party: c.party,
       }));
+
+      return [...members, ...presidential];
     } finally {
       await conn.close();
     }
@@ -586,7 +565,8 @@ export const api = {
                ANY_VALUE(cmte_id) as cmte_id,
                CAST(SUM(amount) AS DOUBLE) as total
         FROM read_parquet('${CONTRIBUTIONS_URL}')
-        WHERE ${recipientMatch} AND date >= '${CYCLE_START_DATE}'
+        WHERE ${recipientMatch}
+          AND (date IS NULL OR date >= '${CYCLE_START_DATE}')
         GROUP BY 1 ORDER BY total DESC
       `);
       const rows = res.toArray() as WhosPayingRow[];
@@ -671,6 +651,7 @@ export const api = {
           `${(r.occ ?? '').toUpperCase()} ${(r.emp ?? '').toUpperCase()} ${r.donor}`,
           r.cmte_id
         ),
+        cmte_id: r.cmte_id,
         amount: r.amount,
         date: r.date,
       }));
@@ -729,7 +710,8 @@ export const api = {
           SELECT CAST(COALESCE(SUM(amount), 0) AS DOUBLE) as total,
                  CAST(COUNT(DISTINCT cmte_id) AS INTEGER) as donors
           FROM read_parquet('${CONTRIBUTIONS_URL}')
-          WHERE ${recipientMatch} AND date >= '${CYCLE_START_DATE}'
+          WHERE ${recipientMatch}
+            AND (date IS NULL OR date >= '${CYCLE_START_DATE}')
         `);
         const row = (res.toArray() as DirectTotalRow[])[0];
         overview.direct = { total: row.total ?? 0, donors: row.donors };
@@ -743,7 +725,8 @@ export const api = {
                  CAST(SUM(amount) AS DOUBLE) as total,
                  CAST(SUM(n_contributions) AS INTEGER) as n
           FROM read_parquet('${EARMARKED_URL}')
-          WHERE ${recipientMatch} AND date >= '${CYCLE_START_DATE}'
+          WHERE ${recipientMatch}
+            AND (date IS NULL OR date >= '${CYCLE_START_DATE}')
           GROUP BY 1 ORDER BY total DESC
         `);
         const rows = res.toArray() as ConduitRow[];
@@ -766,7 +749,8 @@ export const api = {
                  CAST(SUM(CASE WHEN spender_kind NOT IN ('super_pac', 'hybrid_pac')
                           THEN amount ELSE 0 END) AS DOUBLE) as other_total
           FROM read_parquet('${INDEPENDENT_EXPENDITURES_URL}')
-          WHERE ${candidateMatch} AND date >= '${CYCLE_START_DATE}'
+          WHERE ${candidateMatch}
+            AND (date IS NULL OR date >= '${CYCLE_START_DATE}')
           GROUP BY 1
         `);
         const rows = res.toArray() as OutsideRow[];
@@ -820,180 +804,6 @@ export const api = {
       };
     } catch {
       return null;
-    }
-  },
-
-  // 🚀 SEARCHABLE, SECTOR-FILTERABLE, & OPTIMIZED MULTI-SORT PAC METHOD
-  async getVoteCorrelatedDonations(
-    icpsr: number,
-    name: string,
-    page: number = 1,
-    pageSize: number = 10,
-    filters: TimelineFilters = {}
-  ): Promise<{ items: CorrelatedDonation[]; total: number }> {
-    const db = await getDuckDB();
-    if (!icpsr) return { items: [], total: 0 };
-    const conn = await db.connect();
-
-    // Unpack filters with default fallbacks
-    const {
-      search = '',
-      sector = '',
-      direction = 'all',
-      sortBy = 'proximity',
-      hidePacs = true,
-      hideUnanimous = false,
-    } = filters;
-
-    try {
-      const hfUrl = CONTRIBUTIONS_URL;
-      const recipientMatch = buildRecipientNameMatch(
-        'd."recipient.name"',
-        name
-      );
-      const cleanICPSR = Math.floor(icpsr);
-      const offset = (page - 1) * pageSize;
-
-      // 🛠 Dynamically build out search/filter constraints for the SQL engine
-      let secondaryConditions = '';
-
-      // Keyword Text Search (Checks across descriptions, votes, and donor companies)
-      if (search.trim().length > 0) {
-        const cleanSearch = search.replace(/'/g, "''").trim();
-        secondaryConditions += ` AND (rc.vote_desc ILIKE '%${cleanSearch}%' OR d."contributor.name" ILIKE '%${cleanSearch}%')`;
-      }
-
-      // Proximity Window Direction Toggle (Before, After, or Same Day)
-      if (direction === 'before') {
-        secondaryConditions += ` AND CAST(d.date AS DATE) < CAST(rc.date AS DATE)`;
-      } else if (direction === 'after') {
-        // 🌟 FIXED: Changed operator from < to > so "After" timeline filters work correctly
-        secondaryConditions += ` AND CAST(d.date AS DATE) > CAST(rc.date AS DATE)`;
-      } else if (direction === 'same_day') {
-        secondaryConditions += ` AND CAST(d.date AS DATE) = CAST(rc.date AS DATE)`;
-      }
-
-      // A donation "near" a vote that passed 424-2 correlates with nothing —
-      // everyone voted the same way. Contested = losing side got >= 10%.
-      if (hideUnanimous) {
-        secondaryConditions += ` AND (
-          CAST(LEAST(rc.yea_count, rc.nay_count) AS DOUBLE)
-            / NULLIF(CAST(rc.yea_count AS INTEGER) + CAST(rc.nay_count AS INTEGER), 0)
-        ) >= 0.10`;
-      }
-
-      // Hide Party Committee PAC Backlogs (Crucial performance layer for Hakeem Jeffries)
-      if (hidePacs) {
-        secondaryConditions += ` AND NOT (
-          UPPER(d."contributor.name") LIKE '%DCCC%' OR 
-          UPPER(d."contributor.name") LIKE '%ACTBLUE%' OR 
-          UPPER(d."contributor.name") LIKE '%WINRED%' OR
-          UPPER(d."contributor.name") LIKE '%PAC%' OR
-          UPPER(d."contributor.name") LIKE '%COMMITTEE%'
-        )`;
-      }
-
-      // 🌟 FIXED: Added rc.rollnumber anchor for a stable index sorting matrix
-      let orderByClause =
-        'ORDER BY days_difference ASC, d.amount DESC, rc.rollnumber ASC';
-      if (sortBy === 'amount') {
-        orderByClause =
-          'ORDER BY d.amount DESC, days_difference ASC, rc.rollnumber ASC';
-      }
-
-      // 1. Gather total subset pagination boundaries matching active constraints
-      const countQuery = `
-        SELECT CAST(COUNT(*) AS INTEGER) as total_count
-        FROM read_parquet('${VV_BASE}/HSall_votes.parquet') v
-        INNER JOIN read_parquet('${VV_BASE}/HSall_rollcalls.parquet') rc 
-          ON CAST(v.rollnumber AS INTEGER) = CAST(rc.rollnumber AS INTEGER) 
-          AND CAST(v.congress AS INTEGER) = CAST(rc.congress AS INTEGER)
-          AND v.chamber = rc.chamber
-        INNER JOIN read_parquet('${hfUrl}') d
-          ON ${recipientMatch}
-        WHERE CAST(v.icpsr AS INTEGER) = ${cleanICPSR}
-          AND rc.date >= '${CYCLE_START_DATE}'
-          AND abs(date_diff('day', CAST(rc.date AS DATE), CAST(d.date AS DATE))) <= 30
-          ${secondaryConditions}
-      `;
-      const countRes = await conn.query(countQuery);
-      const total =
-        (countRes.toArray() as CorrelationCountRow[])[0]?.total_count ?? 0;
-
-      // 2. Stream paginated and filtered chunk records
-      const query = `
-        SELECT 
-          CAST(CAST(v.rollnumber AS INTEGER) AS VARCHAR) as vote_id,
-          rc.vote_desc,
-          rc.date as vote_date,
-          CAST(v.cast_code AS INTEGER) as cast_code,
-          d."contributor.name" as donor_name,
-          d.cmte_id as cmte_id,
-          CAST(d.amount AS DOUBLE) as amount, -- 🌟 FIXED: Enforce clear numeric types for faster row scanning
-          d.date as donation_date,
-          "contributor.occupation" as occ,
-          "contributor.employer" as emp,
-          abs(date_diff('day', CAST(rc.date AS DATE), CAST(d.date AS DATE))) as days_difference,
-          CAST(rc.yea_count AS INTEGER) as yea_count,
-          CAST(rc.nay_count AS INTEGER) as nay_count
-        FROM read_parquet('${VV_BASE}/HSall_votes.parquet') v
-        INNER JOIN read_parquet('${VV_BASE}/HSall_rollcalls.parquet') rc 
-          ON CAST(v.rollnumber AS INTEGER) = CAST(rc.rollnumber AS INTEGER) 
-          AND CAST(v.congress AS INTEGER) = CAST(rc.congress AS INTEGER)
-          AND v.chamber = rc.chamber
-        INNER JOIN read_parquet('${hfUrl}') d
-          ON ${recipientMatch}
-        WHERE CAST(v.icpsr AS INTEGER) = ${cleanICPSR}
-          AND rc.date >= '${CYCLE_START_DATE}'
-          AND abs(date_diff('day', CAST(rc.date AS DATE), CAST(d.date AS DATE))) <= 30
-          ${secondaryConditions}
-        ${orderByClause}
-        LIMIT ${pageSize} OFFSET ${offset}
-      `;
-
-      const res = await conn.query(query);
-      let items = (res.toArray() as CorrelationRow[]).map((r) => {
-        const occ = (r.occ ?? '').toUpperCase();
-        const emp = (r.emp ?? '').toUpperCase();
-        const combined = `${occ} ${emp} ${r.donor_name}`;
-        const s = classifySector(combined, r.cmte_id);
-
-        const vDate = r.vote_date ? new Date(r.vote_date) : null;
-        const dDate = r.donation_date ? new Date(r.donation_date) : null;
-
-        let direction: 'before' | 'after' | 'same_day' = 'same_day';
-        if (vDate && dDate) {
-          const diffTime = dDate.getTime() - vDate.getTime();
-          if (diffTime < 0) direction = 'before';
-          else if (diffTime > 0) direction = 'after';
-        }
-
-        return {
-          vote_id: r.vote_id,
-          vote_desc: r.vote_desc || `Roll Call Vote #${r.vote_id}`,
-          vote_date: r.vote_date,
-          position:
-            r.cast_code === 1 ? 'Yea' : r.cast_code === 6 ? 'Nay' : 'Other',
-          donor_name: r.donor_name,
-          cmte_id: r.cmte_id,
-          amount: r.amount,
-          donation_date: r.donation_date,
-          days_difference: r.days_difference ?? 0,
-          sector: s,
-          timeline_direction: direction,
-          yea_count: r.yea_count,
-          nay_count: r.nay_count,
-        };
-      });
-
-      // Optional sector filters calculated via mapped row outputs
-      if (sector && sector !== 'all') {
-        items = items.filter((item) => item.sector === sector);
-      }
-
-      return { items, total };
-    } finally {
-      await conn.close();
     }
   },
 };

@@ -75,7 +75,7 @@ export default function PoliticianSearchResults({
                       {partyInfo.label}
                     </Badge>
                   </div>
-                  <div className="text-muted-foreground flex items-center gap-3 text-sm font-bold tracking-tighter uppercase opacity-60">
+                  <div className="flex items-center gap-3 text-sm font-bold tracking-tighter text-zinc-400 uppercase">
                     <span className="flex items-center gap-1">
                       <MapPin className="h-3 w-3" aria-hidden="true" />
                       {politician.state}

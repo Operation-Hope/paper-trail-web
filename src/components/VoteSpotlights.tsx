@@ -47,11 +47,11 @@ export function VoteSpotlights({ icpsr, politicianName }: VoteSpotlightsProps) {
               className="space-y-2.5 rounded-xl border border-white/5 bg-white/[0.02] p-4"
             >
               <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-[10px] text-white/70">
+                <span className="rounded bg-white/10 px-2 py-0.5 font-mono text-sm text-white/80">
                   Vote #{vote.rollnumber}
                 </span>
                 <span
-                  className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${
+                  className={`rounded px-2 py-0.5 text-sm font-bold ${
                     vote.position === 'Yea'
                       ? 'bg-emerald-500/10 text-emerald-400'
                       : vote.position === 'Nay'
@@ -61,7 +61,12 @@ export function VoteSpotlights({ icpsr, politicianName }: VoteSpotlightsProps) {
                 >
                   Voted {vote.position}
                 </span>
-                <span className="text-[11px] text-white/60">
+                {vote.yea !== null && vote.nay !== null && (
+                  <span className="rounded bg-white/5 px-2 py-0.5 font-mono text-sm text-white/70">
+                    {vote.yea}–{vote.nay}
+                  </span>
+                )}
+                <span className="text-sm text-white/60">
                   {shortDate(vote.date)}
                 </span>
               </div>

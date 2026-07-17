@@ -1,14 +1,9 @@
-import {
-  useState,
-  useRef,
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-} from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import {
   Users,
+  ArrowRight,
   ArrowRightLeft,
   Briefcase,
   DollarSign,
@@ -172,18 +167,6 @@ const moneyFlows: MoneyFlow[] = [
   },
 ];
 
-interface Point {
-  x: number;
-  y: number;
-}
-
-interface Line {
-  id: string;
-  from: Point;
-  to: Point;
-  vehicleId: string;
-}
-
 function fmtTotal(n: number): string {
   if (n >= 1_000_000_000) return `$${(n / 1_000_000_000).toFixed(1)}B`;
   return `$${Math.round(n / 1_000_000)}M`;
@@ -223,11 +206,7 @@ const TrackedBadge = ({ tracked }: { tracked: TrackedState }) => {
 
 export default function MoneyFlowchart() {
   const [activeModalId, setActiveModalId] = useState<string | null>(null);
-  const [hoveredId, setHoveredId] = useState<string | null>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
-  const nodeRefs = useRef<Record<string, HTMLElement | undefined>>({});
-  const [lines, setLines] = useState<Line[]>([]);
 
   const { data: freshness } = useQuery({
     queryKey: ['dataFreshness'],
@@ -260,59 +239,6 @@ export default function MoneyFlowchart() {
       window.removeEventListener('keydown', onKey);
     };
   }, [activeModalId]);
-
-  const updateLines = useCallback(() => {
-    if (!containerRef.current) return;
-    const containerRect = containerRef.current.getBoundingClientRect();
-    const newLines: Line[] = [];
-    const getCoords = (id: string, side: 'left' | 'right'): Point | null => {
-      const el = nodeRefs.current[id];
-      if (!el) return null;
-      const rect = el.getBoundingClientRect();
-      return {
-        x: rect[side === 'left' ? 'left' : 'right'] - containerRect.left,
-        y: rect.top + rect.height / 2 - containerRect.top,
-      };
-    };
-
-    moneyFlows.forEach((flow) => {
-      const vId = `v-${flow.id}`,
-        vLeft = getCoords(vId, 'left'),
-        vRight = getCoords(vId, 'right');
-      flow.sources.forEach((s) => {
-        const sId = `s-${flow.id}-${s}`,
-          sCoords = getCoords(sId, 'right');
-        if (sCoords && vLeft)
-          newLines.push({
-            id: `${sId}-${vId}`,
-            from: sCoords,
-            to: vLeft,
-            vehicleId: flow.id,
-          });
-      });
-      flow.destinations.forEach((d) => {
-        const dId = `d-${flow.id}-${d}`,
-          dCoords = getCoords(dId, 'left');
-        if (vRight && dCoords)
-          newLines.push({
-            id: `${vId}-${dId}`,
-            from: vRight,
-            to: dCoords,
-            vehicleId: flow.id,
-          });
-      });
-    });
-    setLines(newLines);
-  }, []);
-
-  useLayoutEffect(() => {
-    const timer = setTimeout(updateLines, 100);
-    window.addEventListener('resize', updateLines);
-    return () => {
-      clearTimeout(timer);
-      window.removeEventListener('resize', updateLines);
-    };
-  }, [updateLines, hoveredId]);
 
   return (
     <div className="min-h-screen bg-black text-white selection:bg-[#4A90E2]/30">
@@ -353,69 +279,42 @@ export default function MoneyFlowchart() {
           </div>
         </div>
 
-        {/* Flowchart Container */}
+        {/* Flowchart: static three-column rows, money always flowing left to
+            right — no absolute positioning, so labels can never overlap. */}
         <div className="mx-auto max-w-6xl px-4 py-16">
-          <div
-            className="relative rounded-3xl border border-white/5 bg-zinc-950/50 p-12"
-            ref={containerRef}
-          >
-            <svg
-              className="pointer-events-none absolute inset-0 z-0 h-full w-full"
-              aria-hidden="true"
-            >
-              {lines.map((line) => (
-                <path
-                  key={line.id}
-                  d={`M ${line.from.x} ${line.from.y} C ${line.from.x + 60} ${line.from.y}, ${line.to.x - 60} ${line.to.y}, ${line.to.x} ${line.to.y}`}
-                  fill="none"
-                  className={`transition-all duration-500 ${hoveredId === line.vehicleId ? 'stroke-[#4A90E2] stroke-[3] opacity-100 drop-shadow-[0_0_8px_rgba(74,144,226,0.8)]' : 'stroke-transparent opacity-0'}`}
-                />
-              ))}
-            </svg>
-
-            <div className="relative z-10 space-y-12">
+          <div className="rounded-3xl border border-white/5 bg-zinc-950/50 p-6 md:p-12">
+            <div className="space-y-12">
               {moneyFlows.map((flow) => (
                 <div
                   key={flow.id}
-                  className="relative flex min-h-[140px] items-center justify-center"
-                  onMouseEnter={() => {
-                    setHoveredId(flow.id);
-                  }}
-                  onMouseLeave={() => {
-                    setHoveredId(null);
-                  }}
+                  className="grid grid-cols-1 items-center gap-4 md:grid-cols-[1fr_auto_1fr] md:gap-6"
                 >
-                  <div
-                    className={`absolute left-0 flex transform flex-col items-end gap-3 transition-all duration-300 ${hoveredId === flow.id ? 'translate-x-0 scale-100 opacity-100' : 'pointer-events-none translate-x-8 scale-90 opacity-0'}`}
+                  {/* Sources -> */}
+                  <ul
+                    className="flex flex-col gap-2.5 md:items-end"
+                    aria-label={`Where ${flow.title} comes from`}
                   >
                     {flow.sources.map((s) => (
-                      <div
-                        key={s}
-                        ref={(el) => {
-                          if (el) nodeRefs.current[`s-${flow.id}-${s}`] = el;
-                        }}
-                        className="rounded-xl border border-white/10 bg-zinc-900 px-5 py-2.5 text-sm font-black tracking-tight whitespace-nowrap text-zinc-300 uppercase shadow-2xl"
-                      >
-                        {s}
-                      </div>
+                      <li key={s} className="flex items-center gap-3">
+                        <span className="rounded-xl border border-white/10 bg-zinc-900 px-4 py-2 text-xs font-black tracking-tight text-zinc-300 uppercase md:text-sm">
+                          {s}
+                        </span>
+                        <ArrowRight
+                          className="h-5 w-5 flex-none text-[#4A90E2]"
+                          aria-hidden="true"
+                        />
+                      </li>
                     ))}
-                  </div>
+                  </ul>
+
+                  {/* Vehicle */}
                   <button
                     type="button"
-                    ref={(el) => {
-                      if (el) nodeRefs.current[`v-${flow.id}`] = el;
-                    }}
                     onClick={() => {
                       setActiveModalId(flow.id);
                     }}
-                    onFocus={() => {
-                      setHoveredId(flow.id);
-                    }}
-                    onBlur={() => {
-                      setHoveredId(null);
-                    }}
                     aria-haspopup="dialog"
-                    className={`z-20 flex w-80 cursor-pointer flex-col items-center gap-3 rounded-2xl border p-6 transition-all duration-300 focus-visible:ring-2 focus-visible:ring-[#4A90E2] focus-visible:outline-none ${hoveredId === flow.id ? 'scale-110 border-[#4A90E2] bg-zinc-900 shadow-[0_0_50px_rgba(74,144,226,0.2)]' : 'border-white/5 bg-zinc-950 opacity-40 grayscale'}`}
+                    className="flex w-full max-w-xs cursor-pointer flex-col items-center gap-3 justify-self-center rounded-2xl border border-white/10 bg-zinc-900 p-6 transition-all duration-200 hover:border-[#4A90E2] hover:shadow-[0_0_40px_rgba(74,144,226,0.15)] focus-visible:ring-2 focus-visible:ring-[#4A90E2] focus-visible:outline-none md:w-80"
                   >
                     <span className="text-center text-sm leading-tight font-black tracking-tight text-white uppercase">
                       {flow.title}
@@ -427,21 +326,24 @@ export default function MoneyFlowchart() {
                       </span>
                     )}
                   </button>
-                  <div
-                    className={`absolute right-0 flex transform flex-col items-start gap-3 transition-all duration-300 ${hoveredId === flow.id ? 'translate-x-0 scale-100 opacity-100' : 'pointer-events-none -translate-x-8 scale-90 opacity-0'}`}
+
+                  {/* -> Impacts */}
+                  <ul
+                    className="flex flex-col items-start gap-2.5"
+                    aria-label={`Where ${flow.title} goes`}
                   >
                     {flow.destinations.map((d) => (
-                      <div
-                        key={d}
-                        ref={(el) => {
-                          if (el) nodeRefs.current[`d-${flow.id}-${d}`] = el;
-                        }}
-                        className="rounded-xl border border-white/10 bg-zinc-900 px-5 py-2.5 text-sm font-black tracking-tight whitespace-nowrap text-zinc-300 uppercase shadow-2xl"
-                      >
-                        {d}
-                      </div>
+                      <li key={d} className="flex items-center gap-3">
+                        <ArrowRight
+                          className="h-5 w-5 flex-none text-[#4A90E2]"
+                          aria-hidden="true"
+                        />
+                        <span className="rounded-xl border border-white/10 bg-zinc-900 px-4 py-2 text-xs font-black tracking-tight text-zinc-300 uppercase md:text-sm">
+                          {d}
+                        </span>
+                      </li>
                     ))}
-                  </div>
+                  </ul>
                 </div>
               ))}
             </div>
