@@ -145,7 +145,7 @@ export default function PoliticianDetails() {
               </span>
             </div>
 
-            <h1 className="text-5xl leading-none font-black tracking-tighter md:text-6xl">
+            <h1 className="text-4xl leading-none font-black tracking-tighter sm:text-5xl md:text-6xl">
               {displayName}
             </h1>
 

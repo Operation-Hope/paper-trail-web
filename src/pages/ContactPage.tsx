@@ -24,8 +24,8 @@ export default function ContactPage() {
         aria-label="Contact and feedback"
       >
         <div className="animate-in fade-in mx-auto max-w-4xl duration-500">
-          <div className="flex h-40 items-center justify-center text-center">
-            <h1 className="text-5xl font-black tracking-tighter text-white uppercase md:text-6xl">
+          <div className="flex h-32 items-center justify-center text-center md:h-40">
+            <h1 className="text-4xl font-black tracking-tighter text-white uppercase sm:text-5xl md:text-6xl">
               Con<span className="text-[#4A90E2]">tact</span>
             </h1>
           </div>

@@ -214,7 +214,12 @@ export function VotesMoneyTimeline({
         </span>
       </div>
 
-      <div className="overflow-x-auto">
+      <div
+        className="overflow-x-auto focus-visible:ring-2 focus-visible:ring-[#4A90E2] focus-visible:outline-none"
+        role="region"
+        aria-label="Timeline chart (scrolls horizontally on small screens)"
+        tabIndex={0}
+      >
         <svg
           ref={svgRef}
           viewBox="0 0 1000 250"

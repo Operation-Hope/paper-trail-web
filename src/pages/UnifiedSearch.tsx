@@ -27,8 +27,8 @@ export default function UnifiedSearch() {
         aria-label="Main Search Hub"
       >
         <div className="animate-in fade-in mx-auto max-w-4xl duration-500">
-          <div className="flex h-40 items-center justify-center text-center">
-            <h1 className="text-6xl font-black tracking-tighter text-white uppercase">
+          <div className="flex h-32 items-center justify-center text-center md:h-40">
+            <h1 className="text-4xl font-black tracking-tighter text-white uppercase sm:text-5xl md:text-6xl">
               Corruption <span className="text-[#4A90E2]">Watch</span>
             </h1>
           </div>
@@ -51,7 +51,7 @@ export default function UnifiedSearch() {
                 setSearchQuery(e.target.value);
               }}
               value={searchQuery}
-              aria-controls="search-results-region"
+              aria-controls={searchQuery ? 'search-results-region' : undefined}
             />
           </div>
 
