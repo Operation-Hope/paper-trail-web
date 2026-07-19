@@ -307,6 +307,85 @@ def build_fec(con: duckdb.DuckDBPyConnection, work_dir: str, out_dir: str, cycle
     log(f"FEC candidate summary: {rows} candidates")
 
 
+# Federal committees affiliated with potential 2028 presidential candidates
+# who are NOT sitting members of Congress (curated by hand from the FEC
+# committee master, 2026-07; verified by name, treasurer, and location).
+# Sitting members are excluded — their money shows through the normal member
+# pages. People with no active federal committee are simply absent here and
+# their pages say so. Slugs match src/data/presidential2028.ts.
+PRESIDENTIAL_COMMITTEES: dict[str, list[str]] = {
+    "gavin-newsom": ["C00836320", "C00836338", "C00836346"],  # Campaign for Democracy PAC / Group / JFC
+    "gretchen-whitmer": ["C00842104"],  # Fight Like Hell PAC
+    "andy-beshear": ["C00864785"],  # In This Together PAC
+    "pete-buttigieg": ["C00697441"],  # Win the Era PAC
+    "jd-vance": ["C00783167"],  # Working for Ohio
+    "marco-rubio": ["C00500025"],  # Reclaim America PAC
+    "kamala-harris": ["C00744946", "C00838912"],  # Harris Victory Fund / Harris Action Fund
+    "robert-f-kennedy-jr": ["C00836916"],  # Team Kennedy
+}
+
+
+def build_presidential(con: duckdb.DuckDBPyConnection, work_dir: str, out_dir: str, cycle: int) -> None:
+    """Itemized individual receipts of 2028 presidential hopefuls' federal committees.
+
+    Money "received" by a non-member candidate this cycle means donations to
+    the federal committees they control (leadership PACs, active campaign
+    committees). Individual receipts (types 15/15E) are summed net of refunds
+    (22Y), day-netted per donor. State campaign accounts are regulated by
+    state law and never appear in FEC data — the frontend says so.
+    """
+    yy = f"{cycle % 100:02d}"
+    if not os.path.exists(os.path.join(work_dir, "itcont.txt")):
+        download_and_extract_zip(f"{FEC_BASE}/{cycle}/indiv{yy}.zip", work_dir)
+    if not os.path.exists(os.path.join(work_dir, "cm.txt")):
+        download_and_extract_zip(f"{FEC_BASE}/{cycle}/cm{yy}.zip", work_dir)
+
+    indiv = fec_read_csv(os.path.join(work_dir, "itcont.txt"), INDIV_COLUMNS)
+    cm = fec_read_csv(os.path.join(work_dir, "cm.txt"), CM_COLUMNS)
+
+    slug_rows = ", ".join(
+        f"('{slug}', '{cmte}')"
+        for slug, committees in PRESIDENTIAL_COMMITTEES.items()
+        for cmte in committees
+    )
+
+    out_path = os.path.join(out_dir, "fec", f"presidential_receipts_{cycle}.parquet")
+    os.makedirs(os.path.dirname(out_path), exist_ok=True)
+    con.execute(f"""
+        COPY (
+            WITH targets(slug, cmte_id) AS (VALUES {slug_rows})
+            SELECT
+                t.slug                                             AS slug,
+                i.CMTE_ID                                          AS cmte_id,
+                ANY_VALUE(cm.CMTE_NM)                              AS committee_name,
+                NULLIF(TRIM(i.NAME), '')                           AS "contributor.name",
+                NULLIF(TRIM(i.EMPLOYER), '')                       AS "contributor.employer",
+                NULLIF(TRIM(i.OCCUPATION), '')                     AS "contributor.occupation",
+                SUM(CASE WHEN i.TRANSACTION_TP = '22Y'
+                         THEN -i.TRANSACTION_AMT ELSE i.TRANSACTION_AMT END) AS amount,
+                CAST(COUNT(*) AS INTEGER)                          AS n_contributions,
+                COALESCE(
+                    strftime(try_strptime(i.TRANSACTION_DT, '%m%d%Y'), '%Y-%m-%d'),
+                    strftime(try_strptime(substr(i.IMAGE_NUM, 1, 8), '%Y%m%d'), '%Y-%m-%d')
+                ) AS date
+            FROM {indiv} i
+            JOIN targets t ON i.CMTE_ID = t.cmte_id
+            LEFT JOIN {cm} cm ON i.CMTE_ID = cm.CMTE_ID
+            WHERE i.TRANSACTION_TP IN ('15', '15E', '22Y')
+              AND COALESCE(i.MEMO_CD, '') <> 'X'
+            GROUP BY t.slug, i.CMTE_ID, "contributor.name",
+                     "contributor.employer", "contributor.occupation", date
+            HAVING SUM(CASE WHEN i.TRANSACTION_TP = '22Y'
+                       THEN -i.TRANSACTION_AMT ELSE i.TRANSACTION_AMT END) <> 0
+            ORDER BY date
+        ) TO '{out_path}' (FORMAT PARQUET, COMPRESSION ZSTD)
+    """)
+    rows, total = con.execute(
+        f"SELECT COUNT(*), COALESCE(SUM(amount), 0) FROM '{out_path}'"
+    ).fetchone()
+    log(f"FEC presidential receipts: {rows} rows, ${total:,.0f} net")
+
+
 def build_earmarks(con: duckdb.DuckDBPyConnection, work_dir: str, out_dir: str, cycle: int) -> None:
     """Attribute earmarked individual contributions to the conduit they passed through.
 
@@ -326,8 +405,10 @@ def build_earmarks(con: duckdb.DuckDBPyConnection, work_dir: str, out_dir: str, 
     vote-proximity analysis.
     """
     yy = f"{cycle % 100:02d}"
-    for name in (f"indiv{yy}", f"ccl{yy}"):
-        download_and_extract_zip(f"{FEC_BASE}/{cycle}/{name}.zip", work_dir)
+    # itcont may already be present from build_presidential (same download).
+    for name, fname in ((f"indiv{yy}", "itcont.txt"), (f"ccl{yy}", "ccl.txt")):
+        if not os.path.exists(os.path.join(work_dir, fname)):
+            download_and_extract_zip(f"{FEC_BASE}/{cycle}/{name}.zip", work_dir)
     # cm/cn are normally already extracted by build_fec; fetch them if this
     # step runs standalone (--skip-fec).
     for name, fname in ((f"cm{yy}", "cm.txt"), (f"cn{yy}", "cn.txt")):
@@ -544,6 +625,9 @@ def main() -> int:
         if not args.skip_fec:
             build_fec(con, work_dir, args.out_dir, args.cycle)
         if not args.skip_earmarks:
+            # Presidential receipts first: it shares the indiv download that
+            # build_earmarks deletes when it finishes.
+            build_presidential(con, work_dir, args.out_dir, args.cycle)
             build_earmarks(con, work_dir, args.out_dir, args.cycle)
         if not args.skip_voteview:
             build_voteview(con, work_dir, args.out_dir)

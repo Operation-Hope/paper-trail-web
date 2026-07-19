@@ -13,6 +13,8 @@ export interface PresidentialCandidate {
   party: 'Democrat' | 'Republican';
   title: string;
   state: string;
+  /** Past congressional service, shown in the votes panel for honesty. */
+  formerCongress?: string;
 }
 
 export const PRESIDENTIAL_2028: PresidentialCandidate[] = [
@@ -37,6 +39,7 @@ export const PRESIDENTIAL_2028: PresidentialCandidate[] = [
     party: 'Democrat',
     title: 'Former Mayor of Chicago',
     state: 'IL',
+    formerCongress: 'U.S. Representative (IL), 2003–2009',
   },
   {
     slug: 'kamala-harris',
@@ -44,6 +47,7 @@ export const PRESIDENTIAL_2028: PresidentialCandidate[] = [
     party: 'Democrat',
     title: '49th Vice President of the United States',
     state: 'CA',
+    formerCongress: 'U.S. Senator (CA), 2017–2021',
   },
   {
     slug: 'wes-moore',
@@ -101,6 +105,7 @@ export const PRESIDENTIAL_2028: PresidentialCandidate[] = [
     party: 'Republican',
     title: 'U.S. Secretary of Homeland Security',
     state: 'SD',
+    formerCongress: 'U.S. Representative (SD), 2011–2019',
   },
   {
     slug: 'marco-rubio',
@@ -108,6 +113,7 @@ export const PRESIDENTIAL_2028: PresidentialCandidate[] = [
     party: 'Republican',
     title: 'U.S. Secretary of State',
     state: 'FL',
+    formerCongress: 'U.S. Senator (FL), 2011–2025',
   },
   {
     slug: 'jd-vance',
@@ -115,6 +121,7 @@ export const PRESIDENTIAL_2028: PresidentialCandidate[] = [
     party: 'Republican',
     title: '50th Vice President of the United States',
     state: 'OH',
+    formerCongress: 'U.S. Senator (OH), 2023–2025',
   },
   {
     slug: 'glenn-youngkin',

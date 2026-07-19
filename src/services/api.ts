@@ -27,6 +27,7 @@ const CONTRIBUTIONS_URL = `${DATA_BASE}/fec/contributions_${CURRENT_CYCLE}_organ
 const EARMARKED_URL = `${DATA_BASE}/fec/earmarked_contributions_${CURRENT_CYCLE}.parquet`;
 const INDEPENDENT_EXPENDITURES_URL = `${DATA_BASE}/fec/independent_expenditures_${CURRENT_CYCLE}.parquet`;
 const CANDIDATE_SUMMARY_URL = `${DATA_BASE}/fec/candidate_summary_${CURRENT_CYCLE}.parquet`;
+const PRESIDENTIAL_RECEIPTS_URL = `${DATA_BASE}/fec/presidential_receipts_${CURRENT_CYCLE}.parquet`;
 const META_URL = `${DATA_BASE}/meta.json`;
 
 // Money a politician's campaign received or that was spent about their race,
@@ -201,6 +202,32 @@ export interface TimelineData {
 export interface MemberTenure {
   sinceYear: number;
   terms: number;
+}
+
+interface PresidentialCommitteeRow {
+  cmte_id: string;
+  committee_name: string | null;
+  total: number;
+}
+
+interface PresidentialDonorRow {
+  donor: string | null;
+  emp: string | null;
+  occ: string | null;
+  total: number;
+}
+
+export interface PresidentialMoney {
+  total: number;
+  donorCount: number;
+  committees: { id: string; name: string; total: number }[];
+  topDonors: {
+    name: string;
+    detail: string | null;
+    sector: string;
+    total: number;
+  }[];
+  sectors: { name: string; value: number }[];
 }
 
 // VoteView bioname first names are often not what a member's FEC filings use:
@@ -673,6 +700,75 @@ export const api = {
       }));
 
       return { votes, donations };
+    } finally {
+      await conn.close();
+    }
+  },
+
+  // Individual donations (net of refunds) to the federal committees of a
+  // 2028 presidential hopeful who isn't a sitting member of Congress.
+  // Returns null when the dataset isn't published yet; a published dataset
+  // with no rows for this slug means the person has no active federal
+  // committees on file.
+  async getPresidentialMoney(slug: string): Promise<PresidentialMoney | null> {
+    const db = await getDuckDB();
+    const conn = await db.connect();
+    try {
+      const safeSlug = slug.replace(/'/g, "''");
+      const committeesRes = await conn.query(`
+        SELECT cmte_id, ANY_VALUE(committee_name) as committee_name,
+               CAST(SUM(amount) AS DOUBLE) as total
+        FROM read_parquet('${PRESIDENTIAL_RECEIPTS_URL}')
+        WHERE slug = '${safeSlug}'
+        GROUP BY 1 ORDER BY total DESC
+      `);
+      const committees = (
+        committeesRes.toArray() as PresidentialCommitteeRow[]
+      ).map((r) => ({
+        id: r.cmte_id,
+        name: r.committee_name ?? r.cmte_id,
+        total: r.total,
+      }));
+
+      const donorsRes = await conn.query(`
+        SELECT "contributor.name" as donor,
+               ANY_VALUE("contributor.employer") as emp,
+               ANY_VALUE("contributor.occupation") as occ,
+               CAST(SUM(amount) AS DOUBLE) as total
+        FROM read_parquet('${PRESIDENTIAL_RECEIPTS_URL}')
+        WHERE slug = '${safeSlug}'
+        GROUP BY 1 ORDER BY total DESC
+      `);
+      const donorRows = donorsRes.toArray() as PresidentialDonorRow[];
+      const sectorTotals: Record<string, number> = {};
+      const donors = donorRows.map((r) => {
+        const sector = classifySector(
+          `${(r.occ ?? '').toUpperCase()} ${(r.emp ?? '').toUpperCase()}`
+        );
+        if (r.total > 0) {
+          sectorTotals[sector] = (sectorTotals[sector] || 0) + r.total;
+        }
+        const detail = [r.occ, r.emp].filter(Boolean).join(', ');
+        return {
+          name: r.donor ?? 'Unitemized / unnamed',
+          detail: detail || null,
+          sector,
+          total: r.total,
+        };
+      });
+
+      return {
+        total: committees.reduce((s, c) => s + c.total, 0),
+        donorCount: donorRows.length,
+        committees,
+        topDonors: donors.slice(0, 15),
+        sectors: Object.entries(sectorTotals)
+          .map(([name, value]) => ({ name, value }))
+          .sort((a, b) => b.value - a.value),
+      };
+    } catch (error) {
+      console.warn('Presidential receipts unavailable:', error);
+      return null;
     } finally {
       await conn.close();
     }
