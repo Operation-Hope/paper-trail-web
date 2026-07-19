@@ -44,7 +44,7 @@ export default function ContactPage() {
               onChange={(e) => {
                 setBody(e.target.value);
               }}
-              placeholder="Please provide feedback here on this site. This could include suggestions, observations of any data discrepancies, etc. Please be as specific as possible in your feedback (reference exact bills, vote numbers, PACS, amounts, etc.)"
+              placeholder="Enter feedback here..."
               className="bg-card w-full rounded-2xl border border-white/10 p-5 text-base text-white placeholder-white/50 focus:ring-2 focus:ring-[#4A90E2] focus:outline-none"
             />
 
@@ -67,12 +67,6 @@ export default function ContactPage() {
                 </p>
               )}
             </div>
-
-            <p className="text-xs leading-relaxed text-zinc-400">
-              Pressing Send opens your email app with your feedback addressed to
-              the Corruption Watch team — sending the email from there delivers
-              it. Your message is not transmitted anywhere else.
-            </p>
           </div>
         </div>
       </main>

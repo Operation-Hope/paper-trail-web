@@ -368,12 +368,24 @@ export const api = {
     const db = await getDuckDB();
     const conn = await db.connect();
     try {
+      // Each word of the query must appear somewhere in the name, in any
+      // order — VoteView stores "Massie, Thomas", so "Thomas Massie" (or
+      // "massie thomas") must still match.
+      const tokens = searchQuery
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean)
+        .map((t) => t.replace(/'/g, "''"));
+      const tokenMatch =
+        tokens.length > 0
+          ? tokens.map((t) => `bioname ILIKE '%${t}%'`).join(' AND ')
+          : "bioname ILIKE '%'";
       const query = `
-        SELECT bioguide_id as id, icpsr, bioname as full_name, state_abbrev as state, 
+        SELECT bioguide_id as id, icpsr, bioname as full_name, state_abbrev as state,
                district_code, chamber, party_code
         FROM read_parquet('${VV_BASE}/HSall_members.parquet')
         WHERE congress = ${CURRENT_CONGRESS}
-          AND bioname ILIKE '%${searchQuery}%'
+          AND (${tokenMatch})
         ORDER BY bioname ASC LIMIT 20
       `;
       const res = await conn.query(query);
@@ -400,9 +412,13 @@ export const api = {
       // Potential 2028 presidential candidates who aren't sitting members
       // (governors, cabinet officials, former officeholders) come from a
       // curated list; sitting members already appear via the query above.
-      const q = searchQuery.toUpperCase();
+      const upperTokens = searchQuery
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean)
+        .map((t) => t.toUpperCase());
       const presidential: Politician[] = PRESIDENTIAL_2028.filter((c) =>
-        c.name.toUpperCase().includes(q)
+        upperTokens.every((t) => c.name.toUpperCase().includes(t))
       ).map((c) => ({
         id: `2028-${c.slug}`,
         canonical_id: `2028-${c.slug}`,

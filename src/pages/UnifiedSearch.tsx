@@ -51,8 +51,8 @@ export default function UnifiedSearch() {
 
           <div className="relative mx-auto mt-6 max-w-2xl">
             <label htmlFor="politician-search-input" className="sr-only">
-              Search for a sitting U.S. Senator, House Representative, or 2028
-              presidential candidate
+              Search current U.S. senators, representatives, 2028 presidential
+              candidates
             </label>
             <Search
               className="absolute top-1/2 left-4 h-5 w-5 -translate-y-1/2 text-zinc-500"
@@ -65,7 +65,7 @@ export default function UnifiedSearch() {
               placeholder={
                 isNarrow
                   ? 'Search politicians & 2028 candidates ...'
-                  : 'Search for a sitting U.S. Senator, House Representative, or 2028 presidential candidate ...'
+                  : 'Search current U.S. senators, representatives, 2028 presidential candidates'
               }
               onChange={(e) => {
                 setSearchQuery(e.target.value);
