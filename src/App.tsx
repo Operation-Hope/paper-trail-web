@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { useLayoutEffect } from 'react';
+import { Analytics } from '@vercel/analytics/react';
 import Header from './components/Header';
 import PoliticianDetails from './components/PoliticianDetails';
 import UnifiedSearch from './pages/UnifiedSearch';
@@ -32,6 +33,7 @@ export default function App() {
           </Routes>
         </main>
       </div>
+      <Analytics />
     </Router>
   );
 }
