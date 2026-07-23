@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api, WhosPaying as WhosPayingData } from '../services/api';
 import { fmtMoney, sectorColor } from '../utils/moneyViz';
@@ -8,8 +8,13 @@ interface WhosPayingProps {
   politicianName: string;
 }
 
-const CX = 115;
-const CY = 115;
+// Canvas is larger than the visible ring so the enlarged/popped selected
+// slice (plus its glow) never gets clipped by the SVG's implicit
+// overflow:hidden — the ring itself is unchanged, there's just more margin
+// around it now.
+const CX = 160;
+const CY = 160;
+const CANVAS = 320;
 const BASE_R = 92;
 const POP_R = 100;
 const POP_DIST = 9;
@@ -17,6 +22,7 @@ const POP_DIST = 9;
 export function WhosPaying({ politicianName }: WhosPayingProps) {
   const [selected, setSelected] = useState<string | null>(null);
   const [hovered, setHovered] = useState<string | null>(null);
+  const glowId = useId();
 
   const { data, isLoading } = useQuery<WhosPayingData>({
     queryKey: ['whosPaying', politicianName],
@@ -81,14 +87,24 @@ export function WhosPaying({ politicianName }: WhosPayingProps) {
         </p>
       </div>
 
-      <div className="flex flex-wrap items-center justify-center gap-10 py-4">
+      {/* Fixed two-column layout from `sm` up so the donor panel always sits
+          to the right of the chart — a flex-wrap layout here would
+          occasionally wrap it below depending on content width. Phones
+          (below `sm`) still stack, which is unavoidable at that width. */}
+      <div className="grid grid-cols-1 items-center gap-8 py-4 sm:grid-cols-[auto_minmax(0,1fr)]">
         <svg
-          width="230"
-          height="230"
-          viewBox="0 0 230 230"
+          width={CANVAS}
+          height={CANVAS}
+          viewBox={`0 0 ${String(CANVAS)} ${String(CANVAS)}`}
           role="group"
+          className="mx-auto sm:mx-0"
           aria-label={`Donut chart: PAC contributions by sector, total ${fmtMoney(data.total)}. Each slice is a button.`}
         >
+          <defs>
+            <filter id={glowId} x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="4.5" />
+            </filter>
+          </defs>
           {segments.map((s) => {
             const isSelected = s.name === selected;
             const isHovered = s.name === hovered;
@@ -99,6 +115,9 @@ export function WhosPaying({ politicianName }: WhosPayingProps) {
             const midRad = (midDeg * Math.PI) / 180;
             const dx = isSelected ? Math.cos(midRad) * POP_DIST : 0;
             const dy = isSelected ? Math.sin(midRad) * POP_DIST : 0;
+            const strokeWidth = isSelected ? 30 : 28;
+            const dasharray = `${String(Math.max(0, s.frac * circ - 2))} ${String(circ)}`;
+            const transform = `translate(${String(dx)} ${String(dy)}) rotate(${String(rotateDeg)} ${String(CX)} ${String(CY)})`;
             return (
               <g
                 key={s.name}
@@ -106,7 +125,7 @@ export function WhosPaying({ politicianName }: WhosPayingProps) {
                 tabIndex={0}
                 aria-pressed={isSelected}
                 aria-label={`${s.name}: ${fmtMoney(s.value)}, ${String(Math.round(s.frac * 100))}% of total. ${isSelected ? 'Selected — showing top donors. Activate again to return to sector view.' : 'Activate to see its top donors.'}`}
-                className="cursor-pointer focus-visible:outline-none motion-safe:transition-transform motion-safe:duration-200"
+                className="cursor-pointer outline-none motion-safe:transition-transform motion-safe:duration-200"
                 onClick={() => {
                   toggleSector(s.name);
                 }}
@@ -137,20 +156,12 @@ export function WhosPaying({ politicianName }: WhosPayingProps) {
                   stroke="#000"
                   strokeOpacity={0}
                   strokeWidth={44}
-                  strokeDasharray={`${String(Math.max(0, s.frac * circ - 2))} ${String(circ)}`}
-                  transform={`translate(${String(dx)} ${String(dy)}) rotate(${String(rotateDeg)} ${String(CX)} ${String(CY)})`}
+                  strokeDasharray={dasharray}
+                  transform={transform}
                 />
-                <circle
-                  cx={CX}
-                  cy={CY}
-                  r={r}
-                  fill="none"
-                  stroke={sectorColor(s.name)}
-                  strokeWidth={isSelected ? 30 : 28}
-                  strokeDasharray={`${String(Math.max(0, s.frac * circ - 2))} ${String(circ)}`}
-                  transform={`translate(${String(dx)} ${String(dy)}) rotate(${String(rotateDeg)} ${String(CX)} ${String(CY)})`}
-                  className="pointer-events-none motion-safe:transition-all motion-safe:duration-200"
-                />
+                {/* Soft glow along the slice's curved edges (inner + outer
+                    rim): a blurred, wider stroke sitting behind the crisp
+                    band, rather than a bright line through its center. */}
                 {(isHovered || isSelected) && (
                   <circle
                     cx={CX}
@@ -158,19 +169,31 @@ export function WhosPaying({ politicianName }: WhosPayingProps) {
                     r={r}
                     fill="none"
                     stroke="white"
-                    strokeOpacity={0.9}
-                    strokeWidth={2}
-                    strokeDasharray={`${String(Math.max(0, s.frac * circ - 2))} ${String(circ)}`}
-                    transform={`translate(${String(dx)} ${String(dy)}) rotate(${String(rotateDeg)} ${String(CX)} ${String(CY)})`}
-                    className="pointer-events-none motion-safe:transition-all motion-safe:duration-200"
+                    strokeOpacity={isSelected ? 0.85 : 0.6}
+                    strokeWidth={strokeWidth + 16}
+                    strokeDasharray={dasharray}
+                    transform={transform}
+                    filter={`url(#${glowId})`}
+                    className="pointer-events-none"
                   />
                 )}
+                <circle
+                  cx={CX}
+                  cy={CY}
+                  r={r}
+                  fill="none"
+                  stroke={sectorColor(s.name)}
+                  strokeWidth={strokeWidth}
+                  strokeDasharray={dasharray}
+                  transform={transform}
+                  className="pointer-events-none motion-safe:transition-all motion-safe:duration-200"
+                />
               </g>
             );
           })}
           <text
             x={CX}
-            y={selectedSector ? 106 : 112}
+            y={selectedSector ? CY - 9 : CY - 3}
             textAnchor="middle"
             className="fill-white font-mono text-2xl font-black"
           >
@@ -179,7 +202,7 @@ export function WhosPaying({ politicianName }: WhosPayingProps) {
           {selectedSector ? (
             <text
               x={CX}
-              y={128}
+              y={CY + 13}
               textAnchor="middle"
               style={{
                 fill: 'rgba(255,255,255,0.6)',
@@ -195,7 +218,7 @@ export function WhosPaying({ politicianName }: WhosPayingProps) {
           ) : (
             <text
               x={CX}
-              y={134}
+              y={CY + 19}
               textAnchor="middle"
               style={{
                 fill: 'rgba(255,255,255,0.5)',
@@ -210,8 +233,8 @@ export function WhosPaying({ politicianName }: WhosPayingProps) {
         </svg>
 
         {selectedSector ? (
-          <div className="min-w-[230px]" aria-live="polite">
-            <div className="mb-2 flex items-center justify-between gap-3">
+          <div className="min-w-0" aria-live="polite">
+            <div className="mb-2 flex flex-col items-start gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
               <h3 className="text-xs font-black tracking-wider text-white/85 uppercase">
                 Top Donors — {selectedSector.name}
               </h3>
@@ -245,7 +268,7 @@ export function WhosPaying({ politicianName }: WhosPayingProps) {
             </ol>
           </div>
         ) : (
-          <ul className="min-w-[230px] space-y-2 text-sm">
+          <ul className="min-w-0 space-y-2 text-sm">
             {segments.map((s) => (
               <li key={s.name}>
                 <button
@@ -260,8 +283,10 @@ export function WhosPaying({ politicianName }: WhosPayingProps) {
                     style={{ backgroundColor: sectorColor(s.name) }}
                     aria-hidden="true"
                   />
-                  <span className="text-white/75">{s.name}</span>
-                  <span className="ml-auto pl-4 font-mono text-white/90">
+                  <span className="min-w-0 flex-1 truncate text-white/75">
+                    {s.name}
+                  </span>
+                  <span className="flex-none pl-4 font-mono text-white/90">
                     {Math.round(s.frac * 100)}%
                   </span>
                 </button>
