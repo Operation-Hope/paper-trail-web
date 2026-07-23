@@ -172,7 +172,7 @@ export interface RankedDonor {
 
 export interface WhosPaying {
   topDonors: RankedDonor[];
-  sectors: { name: string; value: number }[];
+  sectors: { name: string; value: number; topDonors: RankedDonor[] }[];
   total: number;
 }
 
@@ -614,18 +614,26 @@ export const api = {
       `);
       const rows = res.toArray() as WhosPayingRow[];
       const sectorTotals: Record<string, number> = {};
+      const sectorDonors: Record<string, RankedDonor[]> = {};
       const ranked: RankedDonor[] = rows.map((r) => {
         const sector = classifySector(
           `${(r.occ ?? '').toUpperCase()} ${(r.emp ?? '').toUpperCase()} ${r.donor}`,
           r.cmte_id
         );
         sectorTotals[sector] = (sectorTotals[sector] || 0) + r.total;
-        return { name: r.donor, sector, total: r.total };
+        const donor = { name: r.donor, sector, total: r.total };
+        (sectorDonors[sector] ??= []).push(donor);
+        return donor;
       });
       return {
         topDonors: ranked.slice(0, 10),
         sectors: Object.entries(sectorTotals)
-          .map(([name, value]) => ({ name, value }))
+          .map(([name, value]) => ({
+            name,
+            value,
+            // Already sorted by total DESC from the SQL query above.
+            topDonors: (sectorDonors[name] ?? []).slice(0, 10),
+          }))
           .sort((a, b) => b.value - a.value),
         total: ranked.reduce((s, r) => s + r.total, 0),
       };
