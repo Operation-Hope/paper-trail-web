@@ -93,11 +93,9 @@ export function WhosPaying({ politicianName }: WhosPayingProps) {
           (below `sm`) still stack, which is unavoidable at that width. */}
       <div className="grid grid-cols-1 items-center gap-8 py-4 sm:grid-cols-[auto_minmax(0,1fr)]">
         <svg
-          width={CANVAS}
-          height={CANVAS}
           viewBox={`0 0 ${String(CANVAS)} ${String(CANVAS)}`}
           role="group"
-          className="mx-auto sm:mx-0"
+          className="mx-auto block aspect-square w-full max-w-[320px] sm:mx-0 sm:w-[320px] sm:max-w-none"
           aria-label={`Donut chart: PAC contributions by sector, total ${fmtMoney(data.total)}. Each slice is a button.`}
         >
           <defs>
@@ -248,24 +246,49 @@ export function WhosPaying({ politicianName }: WhosPayingProps) {
                 Back to sectors
               </button>
             </div>
-            <ol className="space-y-2 text-sm">
-              {selectedSector.topDonors.map((d, i) => (
-                <li
-                  key={`${d.name}-${String(i)}`}
-                  className="flex items-baseline gap-2"
-                >
-                  <span className="w-4 flex-none font-mono text-[11px] text-white/60">
-                    {i + 1}
-                  </span>
-                  <span className="min-w-0 flex-1 truncate text-white/85">
-                    {d.name}
-                  </span>
-                  <span className="flex-none font-mono text-white/90">
-                    {fmtMoney(d.total)}
-                  </span>
-                </li>
-              ))}
-            </ol>
+            {/* Horizontally scrollable on phones so the full donor name is
+                reachable by swipe instead of being truncated; sm+ reverts to
+                a fixed-width, truncated, non-scrolling list since there's
+                room to show everything. */}
+            <div
+              className="overflow-x-auto focus-visible:ring-2 focus-visible:ring-[#4A90E2] focus-visible:outline-none sm:overflow-visible"
+              role="region"
+              aria-label="Top donors for this sector (scrolls horizontally on small screens)"
+              tabIndex={0}
+            >
+              <ol className="w-max min-w-full space-y-2 text-sm sm:w-auto">
+                {selectedSector.topDonors.map((d, i) => (
+                  <li
+                    key={`${d.name}-${String(i)}`}
+                    className="flex items-baseline gap-2 whitespace-nowrap sm:whitespace-normal"
+                  >
+                    <span className="w-4 flex-none font-mono text-[11px] text-white/60">
+                      {i + 1}
+                    </span>
+                    <span className="flex-none text-white/85 sm:min-w-0 sm:flex-1 sm:truncate">
+                      {d.name}
+                    </span>
+                    {d.cmte_id && (
+                      <a
+                        href={`https://www.fec.gov/data/committee/${d.cmte_id}/`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-none text-[10px] font-semibold tracking-wide text-[#4A90E2] uppercase hover:underline focus-visible:ring-2 focus-visible:ring-[#4A90E2] focus-visible:outline-none"
+                        aria-label={`Verify ${d.name} at FEC.gov (opens in new tab)`}
+                      >
+                        <span className="sm:hidden">Verify ↗</span>
+                        <span className="hidden sm:inline">
+                          Verify at FEC.gov ↗
+                        </span>
+                      </a>
+                    )}
+                    <span className="flex-none pl-2 font-mono text-white/90 sm:ml-auto sm:pl-0">
+                      {fmtMoney(d.total)}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            </div>
           </div>
         ) : (
           <ul className="min-w-0 space-y-2 text-sm">

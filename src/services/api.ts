@@ -167,6 +167,7 @@ interface TenureRow {
 export interface RankedDonor {
   name: string;
   sector: string;
+  cmte_id: string | null;
   total: number;
 }
 
@@ -621,7 +622,12 @@ export const api = {
           r.cmte_id
         );
         sectorTotals[sector] = (sectorTotals[sector] || 0) + r.total;
-        const donor = { name: r.donor, sector, total: r.total };
+        const donor = {
+          name: r.donor,
+          sector,
+          cmte_id: r.cmte_id,
+          total: r.total,
+        };
         (sectorDonors[sector] ??= []).push(donor);
         return donor;
       });
