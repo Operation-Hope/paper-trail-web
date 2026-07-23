@@ -3,12 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import PoliticianSearchResults from '../components/PoliticianSearchResults';
 import { useState, useEffect, Suspense } from 'react';
 import { Politician } from '../types/api';
-import { Search, Loader2 } from 'lucide-react';
+import { Search, Loader2, ChevronDown } from 'lucide-react';
 import { Input } from '../components/ui/input';
 
 export default function UnifiedSearch() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isNarrow, setIsNarrow] = useState(false);
+  const [disclaimerOpen, setDisclaimerOpen] = useState(false);
   const navigate = useNavigate();
 
   // Placeholders can't wrap, and the full prompt physically can't fit a
@@ -107,70 +108,93 @@ export default function UnifiedSearch() {
           )}
 
           {/* Legal Disclaimer Box */}
-          <footer className="mx-auto mt-16 max-w-3xl space-y-4 pt-8 text-xs text-zinc-400">
-            <p>
-              <strong>* Purpose and Data Sources:</strong> Corruption Watch is
-              an independent, non-partisan, open-source data visualization
-              platform compiled strictly for educational, journalism, and
-              research transparency purposes. Legislative voting records are
-              sourced dynamically from the <em>UCLA VoteView archive</em>.
-              Campaign finance data is compiled via automated daily sync
-              pipelines sourcing public record filings from the{' '}
-              <strong>
-                Federal Election Commission (FEC) bulk data repositories for the
-                active 2026 election cycle
-              </strong>
-              , including direct committee contributions to candidates,
-              individual contributions earmarked through conduit committees, and
-              independent expenditures made by super PACs and other committees.
-              This platform is not affiliated with, funded by, or endorsed by
-              any government entity, political party, or candidate.
-            </p>
+          <footer className="mx-auto mt-16 max-w-3xl pt-8 text-xs text-zinc-400">
+            <button
+              type="button"
+              onClick={() => {
+                setDisclaimerOpen((open) => !open);
+              }}
+              aria-expanded={disclaimerOpen}
+              aria-controls="legal-disclaimer-content"
+              className="flex w-full items-center gap-2 rounded-lg py-1 text-left text-[11px] font-black tracking-[0.2em] text-zinc-400 uppercase transition-colors hover:text-white focus-visible:ring-2 focus-visible:ring-[#4A90E2] focus-visible:outline-none"
+            >
+              <ChevronDown
+                className={`h-3.5 w-3.5 flex-none transition-transform duration-200 ${disclaimerOpen ? 'rotate-180' : ''}`}
+                aria-hidden="true"
+              />
+              Legal Disclaimer
+            </button>
 
-            <p>
-              <strong>
-                * Disclaimer of Implication (No Statement of Corruption):
-              </strong>{' '}
-              The name &quot;Corruption Watch&quot; is a title intended to
-              reflect the public interest in tracking money in politics. The
-              correlation or proximity of a campaign contribution to a
-              legislative vote displayed on this site is purely mathematical and
-              algorithmic. It does not constitute a statement, accusation, or
-              implication of legal conflict of interest, bribery, illicit
-              political behavior, or actual corruption by any individual
-              senator, representative, or donor. Many contributions and votes
-              occur close together naturally due to the standard calendar of the
-              legislative cycle. Independent expenditures are, by law, made
-              without coordination with any candidate; their display alongside a
-              politician indicates only that the spending referenced that
-              politician&apos;s race, not that the politician received,
-              directed, or approved the funds. Contributions attributed to a
-              conduit committee reflect FEC-reported pass-throughs of individual
-              donations facilitated by that conduit, not the conduit&apos;s own
-              treasury funds.
-            </p>
+            <div
+              id="legal-disclaimer-content"
+              hidden={!disclaimerOpen}
+              className="space-y-4 pt-4"
+            >
+              <p>
+                <strong>* Purpose and Data Sources:</strong> Corruption Watch is
+                an independent, non-partisan, open-source data visualization
+                platform compiled strictly for educational, journalism, and
+                research transparency purposes. Legislative voting records are
+                sourced dynamically from the <em>UCLA VoteView archive</em>.
+                Campaign finance data is compiled via automated daily sync
+                pipelines sourcing public record filings from the{' '}
+                <strong>
+                  Federal Election Commission (FEC) bulk data repositories for
+                  the active 2026 election cycle
+                </strong>
+                , including direct committee contributions to candidates,
+                individual contributions earmarked through conduit committees,
+                and independent expenditures made by super PACs and other
+                committees. This platform is not affiliated with, funded by, or
+                endorsed by any government entity, political party, or
+                candidate.
+              </p>
 
-            <p>
-              <strong>
-                * Real-Time Data Discrepancies & Limitation of Liability:
-              </strong>{' '}
-              Data is aggregated dynamically via client-side processing
-              structures and provided strictly &quot;as-is&quot; and
-              &quot;as-available&quot; without explicit or implied warranties of
-              precision, completeness, or instantaneous real-time parity.{' '}
-              <strong>
-                Because public record filings are sourced directly from ongoing
-                federal disclosures, data may contain temporary clerical
-                duplicates, amendments, or submission lags inherent to the FEC
-                reporting timeline.
-              </strong>{' '}
-              Displayed amounts are net figures: amendments and refunds reported
-              by filers are summed into totals rather than shown as separate
-              entries, and figures may shift as filings are amended. The
-              creators of this platform disclaim all liability for any errors,
-              omissions, or inaccuracies in the data, or for any actions taken
-              in reliance on the information provided herein.
-            </p>
+              <p>
+                <strong>
+                  * Disclaimer of Implication (No Statement of Corruption):
+                </strong>{' '}
+                The name &quot;Corruption Watch&quot; is a title intended to
+                reflect the public interest in tracking money in politics. The
+                correlation or proximity of a campaign contribution to a
+                legislative vote displayed on this site is purely mathematical
+                and algorithmic. It does not constitute a statement, accusation,
+                or implication of legal conflict of interest, bribery, illicit
+                political behavior, or actual corruption by any individual
+                senator, representative, or donor. Many contributions and votes
+                occur close together naturally due to the standard calendar of
+                the legislative cycle. Independent expenditures are, by law,
+                made without coordination with any candidate; their display
+                alongside a politician indicates only that the spending
+                referenced that politician&apos;s race, not that the politician
+                received, directed, or approved the funds. Contributions
+                attributed to a conduit committee reflect FEC-reported
+                pass-throughs of individual donations facilitated by that
+                conduit, not the conduit&apos;s own treasury funds.
+              </p>
+
+              <p>
+                <strong>
+                  * Real-Time Data Discrepancies & Limitation of Liability:
+                </strong>{' '}
+                Data is aggregated dynamically via client-side processing
+                structures and provided strictly &quot;as-is&quot; and
+                &quot;as-available&quot; without explicit or implied warranties
+                of precision, completeness, or instantaneous real-time parity.{' '}
+                <strong>
+                  Because public record filings are sourced directly from
+                  ongoing federal disclosures, data may contain temporary
+                  clerical duplicates, amendments, or submission lags inherent
+                  to the FEC reporting timeline.
+                </strong>{' '}
+                Displayed amounts are net figures: amendments and refunds
+                reported by filers are summed into totals rather than shown as
+                separate entries, and figures may shift as filings are amended.
+                The creators of this platform disclaim all liability for any
+                errors, omissions, or inaccuracies in the data, or for any
+                actions taken in reliance on the information provided herein.
+              </p>
+            </div>
           </footer>
         </div>
       </main>
