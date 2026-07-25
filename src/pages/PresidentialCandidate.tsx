@@ -3,6 +3,9 @@ import { Link, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { api, PresidentialMoney } from '../services/api';
 import { PRESIDENTIAL_2028 } from '../data/presidential2028';
+import { WhosPaying } from '../components/WhosPaying';
+import { VotesMoneyTimeline } from '../components/VotesMoneyTimeline';
+import { VoteSpotlights } from '../components/VoteSpotlights';
 import { fmtMoney, sectorColor } from '../utils/moneyViz';
 import { MapPin, Landmark, CalendarClock, Loader2 } from 'lucide-react';
 
@@ -310,46 +313,84 @@ export default function PresidentialCandidate() {
           )}
         </section>
 
-        {/* ---- Votes ---- */}
-        <section
-          aria-label="Congressional voting record"
-          className="space-y-3 rounded-3xl border border-white/10 !bg-zinc-900/90 p-6 shadow-2xl shadow-black/80"
-        >
-          <h2 className="text-xl font-bold tracking-tight text-white">
-            Congressional Votes, 2026 to Present
-          </h2>
-          <p className="max-w-3xl text-sm leading-relaxed text-white/70">
-            <strong className="text-white/90">None.</strong> {candidate.name} is{' '}
-            {candidate.title.startsWith('Former') ? '' : 'currently '}
-            {candidate.title}, not a member of Congress, so there are no federal
-            roll-call votes to show for this period.
-            {isGovernor &&
-              ' Bills they sign or veto are state legislation, which is not part of any federal voting record.'}
-          </p>
-          {candidate.formerCongress && (
-            <p className="max-w-3xl text-sm leading-relaxed text-white/70">
-              Past congressional service: {candidate.formerCongress}. Their
-              historical voting record predates the current cycle covered by
-              this site.
-            </p>
-          )}
-          <p className="max-w-3xl text-sm leading-relaxed text-white/70">
-            Sitting senators and representatives who are also potential 2028
-            candidates have full money-and-votes profiles — search their names
-            from the{' '}
-            <Link
-              to="/"
-              className="text-[#4A90E2] underline focus-visible:ring-2 focus-visible:ring-[#4A90E2] focus-visible:outline-none"
+        {/* ---- Congressional record (only for those who actually served) ---- */}
+        {candidate.icpsr ? (
+          <>
+            <section
+              aria-label="Congressional service summary"
+              className="space-y-3 rounded-3xl border border-white/10 !bg-zinc-900/90 p-6 shadow-2xl shadow-black/80"
             >
-              home page
-            </Link>
-            .
-          </p>
-          <p className="text-xs text-white/50">
-            Candidate watch list source: TrackAIPAC&apos;s 2028 page, as of July
-            2026. Data updates daily.
-          </p>
-        </section>
+              <h2 className="text-xl font-bold tracking-tight text-white">
+                Their Record in Congress
+              </h2>
+              <p className="max-w-3xl text-sm leading-relaxed text-white/70">
+                {candidate.name} served as{' '}
+                <strong className="text-white/90">
+                  {candidate.formerCongress}
+                </strong>
+                . Everything below covers that service: every roll-call vote
+                they cast, and the PAC money their campaign committee received
+                over the same period — the same money-and-votes view this site
+                shows for sitting members.
+              </p>
+              <p className="max-w-3xl text-xs leading-relaxed text-white/50">
+                Money shown is PAC contributions to their congressional campaign
+                committee. Money raised later for other offices (including
+                presidential campaigns) is not included here, because pairing it
+                with votes cast years earlier would be misleading.
+              </p>
+            </section>
+
+            <WhosPaying
+              politicianName={candidate.name}
+              formerFederalSlug={candidate.slug}
+            />
+            <VotesMoneyTimeline
+              icpsr={candidate.icpsr}
+              politicianName={candidate.name}
+              formerFederalSlug={candidate.slug}
+            />
+            <VoteSpotlights
+              icpsr={candidate.icpsr}
+              politicianName={candidate.name}
+              formerFederalSlug={candidate.slug}
+            />
+          </>
+        ) : (
+          <section
+            aria-label="Congressional voting record"
+            className="space-y-3 rounded-3xl border border-white/10 !bg-zinc-900/90 p-6 shadow-2xl shadow-black/80"
+          >
+            <h2 className="text-xl font-bold tracking-tight text-white">
+              Congressional Votes
+            </h2>
+            <p className="max-w-3xl text-sm leading-relaxed text-white/70">
+              <strong className="text-white/90">None.</strong> {candidate.name}{' '}
+              is {candidate.title.startsWith('Former') ? '' : 'currently '}
+              {candidate.title} and has never served in Congress, so there are
+              no federal roll-call votes to show.
+              {isGovernor &&
+                ' Bills they sign or veto are state legislation, which is not part of any federal voting record.'}
+            </p>
+            <p className="max-w-3xl text-sm leading-relaxed text-white/70">
+              Sitting senators and representatives who are also potential 2028
+              candidates have full money-and-votes profiles — search their names
+              from the{' '}
+              <Link
+                to="/"
+                className="text-[#4A90E2] underline focus-visible:ring-2 focus-visible:ring-[#4A90E2] focus-visible:outline-none"
+              >
+                home page
+              </Link>
+              .
+            </p>
+          </section>
+        )}
+
+        <p className="px-2 text-xs text-white/50">
+          Candidate watch list source: TrackAIPAC&apos;s 2028 page, as of July
+          2026. Data updates daily.
+        </p>
       </div>
     </div>
   );

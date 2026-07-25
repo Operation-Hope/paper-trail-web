@@ -15,6 +15,7 @@ import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 interface VotesMoneyTimelineProps {
   icpsr: number;
   politicianName: string;
+  formerFederalSlug?: string;
 }
 
 // SVG plot geometry (viewBox units)
@@ -25,23 +26,41 @@ const Y_TOP = 40;
 const Y_BOT = 185;
 const AMOUNT_CAP = 10000;
 
-const T0 = Date.parse('2025-01-03');
+const CYCLE_T0 = Date.parse('2025-01-03');
+const DAY_MS = 86400000;
 
 export function VotesMoneyTimeline({
   icpsr,
   politicianName,
+  formerFederalSlug,
 }: VotesMoneyTimelineProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [windowDays, setWindowDays] = useState<number>(30);
   const [selectedRoll, setSelectedRoll] = useState<number | null>(null);
 
   const { data, isLoading } = useQuery<TimelineData>({
-    queryKey: ['timelineData', icpsr, politicianName],
-    queryFn: () => api.getTimelineData(icpsr, politicianName),
+    queryKey: ['timelineData', icpsr, politicianName, formerFederalSlug],
+    queryFn: () =>
+      api.getTimelineData(icpsr, politicianName, formerFederalSlug),
     enabled: !!icpsr,
   });
 
-  const T1 = useMemo(() => Date.now(), []);
+  // A former member's career spans many cycles, so the axis has to come from
+  // the data itself; sitting members keep the fixed current-cycle window so
+  // every member page shares one comparable axis.
+  const [T0, T1] = useMemo(() => {
+    if (!formerFederalSlug) return [CYCLE_T0, Date.now()];
+    const times = [
+      ...(data?.votes ?? []).map((v) => Date.parse(v.date)),
+      ...(data?.donations ?? []).map((d) => Date.parse(d.date)),
+    ].filter((t) => !Number.isNaN(t));
+    if (times.length === 0) return [CYCLE_T0, Date.now()];
+    const min = Math.min(...times);
+    const max = Math.max(...times);
+    // Pad so marks at the extremes aren't clipped against the axis ends.
+    return [min - 30 * DAY_MS, max + 30 * DAY_MS];
+  }, [formerFederalSlug, data]);
+
   const xOf = (iso: string): number =>
     X0 + ((Date.parse(iso) - T0) / (T1 - T0)) * (X1 - X0);
   const yOf = (amount: number): number =>
@@ -70,24 +89,39 @@ export function VotesMoneyTimeline({
       );
   }, [data, selected, windowDays]);
 
+  // Tick density adapts to the span: quarterly labels read well across one
+  // cycle but would collide badly across a 20-year career, so long spans fall
+  // back to yearly (or every-other-year) labels.
   const months = useMemo(() => {
     const out: { t: number; label: string | null }[] = [];
-    for (let year = 2025; year <= 2100; year++) {
+    const spanYears = (T1 - T0) / (365.25 * DAY_MS);
+    const startYear = new Date(T0).getUTCFullYear();
+    const endYear = new Date(T1).getUTCFullYear();
+    const yearStep = spanYears > 12 ? 2 : 1;
+
+    for (let year = startYear; year <= endYear; year++) {
       for (let month = 0; month < 12; month++) {
         const t = Date.UTC(year, month, 1);
         if (t < T0) continue;
         if (t > T1) return out;
-        const labels: Record<number, string> = {
-          0: `Jan '${String(year % 100)}`,
-          3: 'Apr',
-          6: 'Jul',
-          9: 'Oct',
-        };
-        out.push({ t, label: labels[month] ?? null });
+        let label: string | null = null;
+        if (spanYears <= 4) {
+          const labels: Record<number, string> = {
+            0: `Jan '${String(year % 100).padStart(2, '0')}`,
+            3: 'Apr',
+            6: 'Jul',
+            9: 'Oct',
+          };
+          label = labels[month] ?? null;
+        } else if (month === 0 && (year - startYear) % yearStep === 0) {
+          label = `'${String(year % 100).padStart(2, '0')}`;
+        }
+        // Only emit gridlines we'd actually draw, to keep long spans light.
+        if (label !== null || spanYears <= 4) out.push({ t, label });
       }
     }
     return out;
-  }, [T1]);
+  }, [T0, T1]);
 
   if (isLoading) {
     return (

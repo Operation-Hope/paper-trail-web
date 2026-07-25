@@ -5,16 +5,22 @@ import { fmtMoney, shortDate, topVotesByNearbyMoney } from '../utils/moneyViz';
 interface VoteSpotlightsProps {
   icpsr: number;
   politicianName: string;
+  formerFederalSlug?: string;
 }
 
 // The three contested votes with the most PAC money within ±30 days, each
 // summarized by the same fixed formula for every member — no editorial
 // selection, and near-unanimous votes are excluded because timing around
 // them carries no signal.
-export function VoteSpotlights({ icpsr, politicianName }: VoteSpotlightsProps) {
+export function VoteSpotlights({
+  icpsr,
+  politicianName,
+  formerFederalSlug,
+}: VoteSpotlightsProps) {
   const { data } = useQuery<TimelineData>({
-    queryKey: ['timelineData', icpsr, politicianName],
-    queryFn: () => api.getTimelineData(icpsr, politicianName),
+    queryKey: ['timelineData', icpsr, politicianName, formerFederalSlug],
+    queryFn: () =>
+      api.getTimelineData(icpsr, politicianName, formerFederalSlug),
     enabled: !!icpsr,
   });
 
