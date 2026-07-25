@@ -30,6 +30,12 @@ Those files are rebuilt daily from primary sources by `scripts/data_sync.py`
   _for or against_ candidates (FEC transaction types 24E/24A). Kept in a
   separate file from contributions because this money is never given to the
   candidate.
+- **Former-member contributions** — for 2028 presidential hopefuls who
+  previously served in Congress (Harris, Vance, Rubio, Noem, Emanuel,
+  DeSantis), PAC money received across every cycle of that service, so their
+  pages can show the same vote-money view as sitting members. Keyed by
+  hand-verified FEC candidate IDs and VoteView ICPSRs — never by name, since
+  name matching returns the wrong Kennedy and the wrong Newsom.
 - **Earmarked contributions** — individual donations passed through conduit
   committees (ActBlue, WinRed, AIPAC PAC, ...), attributed to the conduit
   (FEC type 15E, recipient-side records only, so conduit-side copies can't

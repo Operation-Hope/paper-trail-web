@@ -6,6 +6,9 @@ import { Loader2 } from 'lucide-react';
 
 interface WhosPayingProps {
   politicianName: string;
+  /** When set, shows their whole congressional career from the curated
+      former-members dataset instead of the current cycle. */
+  formerFederalSlug?: string;
 }
 
 // Canvas is larger than the visible ring so the enlarged/popped selected
@@ -19,14 +22,17 @@ const BASE_R = 92;
 const POP_R = 100;
 const POP_DIST = 9;
 
-export function WhosPaying({ politicianName }: WhosPayingProps) {
+export function WhosPaying({
+  politicianName,
+  formerFederalSlug,
+}: WhosPayingProps) {
   const [selected, setSelected] = useState<string | null>(null);
   const [hovered, setHovered] = useState<string | null>(null);
   const glowId = useId();
 
   const { data, isLoading } = useQuery<WhosPayingData>({
-    queryKey: ['whosPaying', politicianName],
-    queryFn: () => api.getWhosPaying(politicianName),
+    queryKey: ['whosPaying', politicianName, formerFederalSlug],
+    queryFn: () => api.getWhosPaying(politicianName, formerFederalSlug),
     enabled: !!politicianName,
   });
 
@@ -82,8 +88,9 @@ export function WhosPaying({ politicianName }: WhosPayingProps) {
           Who&apos;s Paying
         </h2>
         <p className="text-sm text-white/50">
-          Direct PAC contributions this cycle, by industry sector. Click a slice
-          to see its top donors.
+          Direct PAC contributions{' '}
+          {formerFederalSlug ? 'during their time in Congress' : 'this cycle'},
+          by industry sector. Click a slice to see its top donors.
         </p>
       </div>
 

@@ -28,6 +28,7 @@ const EARMARKED_URL = `${DATA_BASE}/fec/earmarked_contributions_${CURRENT_CYCLE}
 const INDEPENDENT_EXPENDITURES_URL = `${DATA_BASE}/fec/independent_expenditures_${CURRENT_CYCLE}.parquet`;
 const CANDIDATE_SUMMARY_URL = `${DATA_BASE}/fec/candidate_summary_${CURRENT_CYCLE}.parquet`;
 const PRESIDENTIAL_RECEIPTS_URL = `${DATA_BASE}/fec/presidential_receipts_${CURRENT_CYCLE}.parquet`;
+const FORMER_FEDERAL_URL = `${DATA_BASE}/fec/contributions_former_federal.parquet`;
 const META_URL = `${DATA_BASE}/meta.json`;
 
 // Money a politician's campaign received or that was spent about their race,
@@ -597,20 +598,28 @@ export const api = {
   // Top donors + sector breakdown for the "Who's Paying" section. One query
   // serves both: donors ranked by cycle total, classified into sectors from
   // occupation/employer/name text.
-  async getWhosPaying(name: string): Promise<WhosPaying> {
+  // `formerFederalSlug` switches the source to the curated former-members
+  // dataset (keyed by slug, spanning their whole congressional career)
+  // instead of name-matching the current cycle.
+  async getWhosPaying(
+    name: string,
+    formerFederalSlug?: string
+  ): Promise<WhosPaying> {
     const db = await getDuckDB();
     const conn = await db.connect();
     try {
-      const recipientMatch = buildRecipientNameMatch('"recipient.name"', name);
+      const source = formerFederalSlug
+        ? `read_parquet('${FORMER_FEDERAL_URL}') WHERE slug = '${escapeSqlLike(formerFederalSlug)}'`
+        : `read_parquet('${CONTRIBUTIONS_URL}')
+           WHERE ${buildRecipientNameMatch('"recipient.name"', name)}
+             AND (date IS NULL OR date >= '${CYCLE_START_DATE}')`;
       const res = await conn.query(`
         SELECT "contributor.name" as donor,
                ANY_VALUE("contributor.occupation") as occ,
                ANY_VALUE("contributor.employer") as emp,
                ANY_VALUE(cmte_id) as cmte_id,
                CAST(SUM(amount) AS DOUBLE) as total
-        FROM read_parquet('${CONTRIBUTIONS_URL}')
-        WHERE ${recipientMatch}
-          AND (date IS NULL OR date >= '${CYCLE_START_DATE}')
+        FROM ${source}
         GROUP BY 1 ORDER BY total DESC
       `);
       const rows = res.toArray() as WhosPayingRow[];
@@ -650,11 +659,21 @@ export const api = {
 
   // Full cycle of votes and donations for the visual timeline and the vote
   // spotlights: the components pair them client-side, so one load serves both.
-  async getTimelineData(icpsr: number, name: string): Promise<TimelineData> {
+  // `formerFederalSlug` returns their entire congressional career (votes with
+  // no cycle cutoff, money from the curated former-members dataset) rather
+  // than the current cycle.
+  async getTimelineData(
+    icpsr: number,
+    name: string,
+    formerFederalSlug?: string
+  ): Promise<TimelineData> {
     const db = await getDuckDB();
     if (!icpsr) return { votes: [], donations: [] };
     const conn = await db.connect();
     try {
+      const voteDateFilter = formerFederalSlug
+        ? ''
+        : `AND rc.date >= '${CYCLE_START_DATE}'`;
       const votesRes = await conn.query(`
         SELECT CAST(v.rollnumber AS INTEGER) as rollnumber,
                rc.vote_desc,
@@ -668,7 +687,7 @@ export const api = {
           AND CAST(v.congress AS INTEGER) = CAST(rc.congress AS INTEGER)
           AND v.chamber = rc.chamber
         WHERE CAST(v.icpsr AS INTEGER) = ${Math.floor(icpsr)}
-          AND rc.date >= '${CYCLE_START_DATE}'
+          ${voteDateFilter}
         ORDER BY rc.date
       `);
       const votes: TimelineVote[] = (
@@ -688,7 +707,12 @@ export const api = {
         };
       });
 
-      const recipientMatch = buildRecipientNameMatch('"recipient.name"', name);
+      const donationSource = formerFederalSlug
+        ? `read_parquet('${FORMER_FEDERAL_URL}')
+           WHERE slug = '${escapeSqlLike(formerFederalSlug)}' AND date IS NOT NULL`
+        : `read_parquet('${CONTRIBUTIONS_URL}')
+           WHERE ${buildRecipientNameMatch('"recipient.name"', name)}
+             AND date >= '${CYCLE_START_DATE}'`;
       const donationsRes = await conn.query(`
         SELECT "contributor.name" as donor,
                "contributor.occupation" as occ,
@@ -696,8 +720,7 @@ export const api = {
                cmte_id,
                CAST(amount AS DOUBLE) as amount,
                date
-        FROM read_parquet('${CONTRIBUTIONS_URL}')
-        WHERE ${recipientMatch} AND date >= '${CYCLE_START_DATE}'
+        FROM ${donationSource}
         ORDER BY date
       `);
       const donations: TimelineDonation[] = (

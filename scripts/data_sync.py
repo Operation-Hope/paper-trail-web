@@ -23,6 +23,13 @@ Outputs (per cycle):
       through conduits (15E), attributed to the conduit, day-netted
   voteview/HSall_{members,rollcalls,votes}.parquet   roll-call data
 
+Outputs (not per cycle):
+  fec/presidential_receipts_{cycle}.parquet          individual receipts of
+      2028 hopefuls' federal committees
+  fec/contributions_former_federal.parquet           PAC money received by 2028
+      hopefuls who previously served in Congress, across every cycle of their
+      service, keyed by curated slug
+
 Environment:
   HF_REPO  Hugging Face dataset repo id, e.g. "someuser/paper-trail-data"
 
@@ -325,6 +332,118 @@ PRESIDENTIAL_COMMITTEES: dict[str, list[str]] = {
 }
 
 
+# 2028 hopefuls who previously served in Congress, and therefore have a real
+# federal roll-call record and federal campaign money from that service.
+#
+# Both IDs are CURATED AND VERIFIED BY HAND -- never derive these by matching
+# names. A name search for "Kennedy, Robert" in VoteView returns RFK Sr. (the
+# senator assassinated in 1968) and an 1880s congressman; "Newsom" returns a
+# congressman from 1943. Publishing either under a 2028 candidate's name would
+# be a fabricated voting record. icpsr comes from the VoteView member file
+# (exact bioname match); cand_id comes from the FEC candidate master.
+#
+# cand_ids are congressional committees only. Presidential campaign committees
+# (e.g. Rubio 2016, Harris 2020/2024, DeSantis 2024) are deliberately excluded:
+# that money was raised for a different office and pairing it with roll-call
+# votes they cast years earlier would be misleading.
+FORMER_FEDERAL: dict[str, dict] = {
+    "kamala-harris": {"icpsr": 41701, "cand_ids": ["S6CA00584"]},   # Sen. CA, 2017-2021
+    "jd-vance": {"icpsr": 42304, "cand_ids": ["S2OH00436"]},        # Sen. OH, 2023-2025
+    "marco-rubio": {"icpsr": 41102, "cand_ids": ["S0FL00338"]},     # Sen. FL, 2011-2025
+    "kristi-noem": {"icpsr": 21177, "cand_ids": ["H0SD00054"]},     # Rep. SD, 2011-2019
+    "rahm-emanuel": {"icpsr": 20323, "cand_ids": ["H2IL05092"]},    # Rep. IL, 2003-2009
+    "ron-desantis": {"icpsr": 21318, "cand_ids": ["H2FL00292"]},    # Rep. FL, 2013-2019
+}
+
+# Cycles spanning the above candidates' congressional service (2003-2025).
+FORMER_FEDERAL_CYCLES: list[int] = [
+    2004, 2006, 2008, 2010, 2012, 2014, 2016, 2018, 2020, 2022, 2024, 2026
+]
+
+
+def build_former_federal(con: duckdb.DuckDBPyConnection, work_dir: str, out_dir: str) -> None:
+    """PAC contributions received by former members of Congress while serving.
+
+    Same transaction rules and day-netting as build_fec, but filtered to a
+    curated set of candidate IDs and unioned across every cycle that overlaps
+    their service, so their pages can show the same vote-money timeline the
+    sitting-member pages show. Emitting `slug` directly means the frontend
+    never has to name-match these people.
+    """
+    cand_to_slug = {
+        cid: slug
+        for slug, meta in FORMER_FEDERAL.items()
+        for cid in meta["cand_ids"]
+    }
+    slug_values = ", ".join(f"('{cid}', '{slug}')" for cid, slug in cand_to_slug.items())
+
+    out_path = os.path.join(out_dir, "fec", "contributions_former_federal.parquet")
+    os.makedirs(os.path.dirname(out_path), exist_ok=True)
+    con.execute("DROP TABLE IF EXISTS former_federal")
+    table_created = False
+
+    for cycle in FORMER_FEDERAL_CYCLES:
+        yy = f"{cycle % 100:02d}"
+        # Per-cycle directory: every cycle's archive unpacks to the same
+        # itpas2.txt/cm.txt filenames, so they must not share a directory.
+        cdir = os.path.join(work_dir, f"cycle_{cycle}")
+        os.makedirs(cdir, exist_ok=True)
+        for name in (f"pas2{yy}", f"cm{yy}"):
+            download_and_extract_zip(f"{FEC_BASE}/{cycle}/{name}.zip", cdir)
+
+        pas2 = fec_read_csv(os.path.join(cdir, "itpas2.txt"), PAS2_COLUMNS)
+        cm = fec_read_csv(os.path.join(cdir, "cm.txt"), CM_COLUMNS)
+        select_sql = f"""
+            WITH targets(cand_id, slug) AS (VALUES {slug_values})
+            SELECT
+                t.slug                                             AS slug,
+                {cycle}                                            AS cycle,
+                ANY_VALUE(COALESCE(
+                    NULLIF(NULLIF(TRIM(cm.CONNECTED_ORG_NM), ''), 'NONE'),
+                    cm.CMTE_NM,
+                    p.CMTE_ID
+                ))                                                 AS "contributor.name",
+                ANY_VALUE(cm.CMTE_NM)                              AS committee_name,
+                ANY_VALUE(NULLIF(TRIM(p.OCCUPATION), ''))          AS "contributor.occupation",
+                ANY_VALUE(NULLIF(TRIM(p.EMPLOYER), ''))            AS "contributor.employer",
+                SUM(p.TRANSACTION_AMT)                             AS amount,
+                COALESCE(
+                    strftime(try_strptime(p.TRANSACTION_DT, '%m%d%Y'), '%Y-%m-%d'),
+                    strftime(try_strptime(substr(p.IMAGE_NUM, 1, 8), '%Y%m%d'), '%Y-%m-%d')
+                )                                                  AS date,
+                p.CAND_ID                                          AS cand_id,
+                p.CMTE_ID                                          AS cmte_id,
+                p.TRANSACTION_TP                                   AS transaction_tp
+            FROM {pas2} p
+            JOIN targets t ON p.CAND_ID = t.cand_id
+            LEFT JOIN {cm} cm ON p.CMTE_ID = cm.CMTE_ID
+            WHERE p.TRANSACTION_TP IN ('24K', '24Z')
+              AND COALESCE(p.MEMO_CD, '') <> 'X'
+            GROUP BY t.slug, p.CMTE_ID, p.CAND_ID, date, p.TRANSACTION_TP
+            HAVING SUM(p.TRANSACTION_AMT) <> 0
+        """
+        if not table_created:
+            con.execute(f"CREATE TABLE former_federal AS {select_sql}")
+            table_created = True
+        else:
+            con.execute(f"INSERT INTO former_federal {select_sql}")
+
+        # Reclaim disk before the next cycle's ~100 MB extraction.
+        for fname in ("itpas2.txt", "cm.txt"):
+            fpath = os.path.join(cdir, fname)
+            if os.path.exists(fpath):
+                os.remove(fpath)
+
+    con.execute(f"""
+        COPY (SELECT * FROM former_federal ORDER BY slug, date)
+        TO '{out_path}' (FORMAT PARQUET, COMPRESSION ZSTD)
+    """)
+    rows, total = con.execute(
+        f"SELECT COUNT(*), COALESCE(SUM(amount), 0) FROM '{out_path}'"
+    ).fetchone()
+    log(f"FEC former-federal contributions: {rows} rows, ${total:,.0f} net")
+
+
 def build_presidential(con: duckdb.DuckDBPyConnection, work_dir: str, out_dir: str, cycle: int) -> None:
     """Itemized individual receipts of 2028 presidential hopefuls' federal committees.
 
@@ -624,6 +743,8 @@ def main() -> int:
     with tempfile.TemporaryDirectory(prefix="data_sync_") as work_dir:
         if not args.skip_fec:
             build_fec(con, work_dir, args.out_dir, args.cycle)
+        if not args.skip_fec:
+            build_former_federal(con, work_dir, args.out_dir)
         if not args.skip_earmarks:
             # Presidential receipts first: it shares the indiv download that
             # build_earmarks deletes when it finishes.
