@@ -1,5 +1,8 @@
-// Curated list of potential 2028 presidential candidates, as tracked at
-// trackaipac.com/2028 (fetched 2026-07-16). Sitting members of Congress are
+// Curated list of potential 2028 presidential candidates. Base list is
+// trackaipac.com/2028 (re-verified 2026-09-06, unchanged since 2026-07-16),
+// widened with names carried in general 2028 coverage (The Hill, TIME) that
+// TrackAIPAC does not rate, since it is an Israel-policy watchdog list rather
+// than a general field tracker. Sitting members of Congress are
 // intentionally NOT listed here — they are already searchable through the
 // VoteView member data and have full money profiles; this list only adds the
 // people the database can't otherwise show (governors, cabinet officials,
@@ -103,6 +106,25 @@ export const PRESIDENTIAL_2028: PresidentialCandidate[] = [
     icpsr: 21318,
   },
   {
+    slug: 'tulsi-gabbard',
+    name: 'Tulsi Gabbard',
+    party: 'Republican',
+    title: 'U.S. Director of National Intelligence',
+    state: 'HI',
+    // She sat as a Democrat; the party field above reflects where she is
+    // placed in 2028 speculation, so the two are stated separately rather
+    // than letting the badge imply she cast these votes as a Republican.
+    formerCongress: 'U.S. Representative (HI), 2013–2021, as a Democrat',
+    icpsr: 21324,
+  },
+  {
+    slug: 'nikki-haley',
+    name: 'Nikki Haley',
+    party: 'Republican',
+    title: 'Former U.S. Ambassador to the United Nations',
+    state: 'SC',
+  },
+  {
     slug: 'robert-f-kennedy-jr',
     name: 'Robert F. Kennedy Jr.',
     party: 'Republican',
@@ -145,8 +167,13 @@ export const PRESIDENTIAL_2028: PresidentialCandidate[] = [
   },
 ];
 
-// Members of Congress on the same watch list — searchable already via their
-// member pages; listed for the 2028 badge on candidate pages if needed later:
-// Cory Booker (NJ), Ruben Gallego (AZ), Mark Kelly (AZ), Ro Khanna (CA-17),
-// Alexandria Ocasio-Cortez (NY-14), Jon Ossoff (GA), Ted Cruz (TX),
-// Elissa Slotkin (MI).
+// Members of Congress on the same watch lists — searchable already via their
+// member pages; listed for the 2028 badge on candidate pages if needed later.
+// Deliberately NOT entries above: a candidate page would show them LESS than
+// their member page does. Verified sitting as of VoteView congress 119.
+//
+// From TrackAIPAC: Cory Booker (NJ), Ruben Gallego (AZ), Mark Kelly (AZ),
+// Ro Khanna (CA-17), Alexandria Ocasio-Cortez (NY-14), Jon Ossoff (GA),
+// Ted Cruz (TX, icpsr 41304), Elissa Slotkin (MI).
+// From wider 2028 coverage: Tom Cotton (AR, icpsr 21301),
+// Josh Hawley (MO, icpsr 41901), Rand Paul (KY, icpsr 41104).

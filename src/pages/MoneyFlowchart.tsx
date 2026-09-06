@@ -287,7 +287,15 @@ export default function MoneyFlowchart() {
             right — no absolute positioning, so labels can never overlap.
             Sources/impacts stay hidden until the row's vehicle is hovered or
             focused; they always occupy their grid space, and the modal also
-            lists them for touch users. */}
+            lists them for touch users.
+
+            Below md the grid collapses to one column and the flow becomes
+            vertical, so the per-item horizontal arrows are dropped (a
+            left-to-right arrow in a top-to-bottom stack points nowhere) in
+            favour of one centred down-arrow per gap. The chips reflow as a
+            centred wrapped row instead of a ragged left-aligned column. The
+            two mobile arrows are display:none at md, which takes them out of
+            grid flow entirely, so the md 3-column track mapping is unchanged. */}
         <div className="mx-auto max-w-6xl px-4 py-16">
           <div className="rounded-3xl border border-white/5 bg-zinc-950/50 p-6 md:p-12">
             <div className="space-y-12">
@@ -299,7 +307,7 @@ export default function MoneyFlowchart() {
                   {/* Sources -> (always visible on touch screens; hover/focus
                       reveal is a pointer-device nicety, gated to md+) */}
                   <ul
-                    className="flex flex-col gap-2.5 transition-all duration-300 motion-reduce:transition-none md:-translate-x-3 md:items-end md:opacity-0 md:group-focus-within:translate-x-0 md:group-focus-within:opacity-100 md:group-hover:translate-x-0 md:group-hover:opacity-100"
+                    className="flex flex-wrap justify-center gap-2.5 transition-all duration-300 motion-reduce:transition-none md:-translate-x-3 md:flex-col md:flex-nowrap md:items-end md:justify-start md:opacity-0 md:group-focus-within:translate-x-0 md:group-focus-within:opacity-100 md:group-hover:translate-x-0 md:group-hover:opacity-100"
                     aria-label={`Where ${flow.title} comes from`}
                   >
                     {flow.sources.map((s) => (
@@ -311,7 +319,7 @@ export default function MoneyFlowchart() {
                           width="44"
                           height="16"
                           viewBox="0 0 44 16"
-                          className="flex-none text-[#4A90E2]"
+                          className="hidden flex-none text-[#4A90E2] md:block"
                           aria-hidden="true"
                         >
                           <line
@@ -335,6 +343,32 @@ export default function MoneyFlowchart() {
                     ))}
                   </ul>
 
+                  {/* Mobile-only connector: sources ↓ vehicle */}
+                  <svg
+                    width="16"
+                    height="34"
+                    viewBox="0 0 16 34"
+                    className="justify-self-center text-[#4A90E2] md:hidden"
+                    aria-hidden="true"
+                  >
+                    <line
+                      x1="8"
+                      y1="1"
+                      x2="8"
+                      y2="26"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    />
+                    <polyline
+                      points="2,24 8,32 14,24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinejoin="round"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+
                   {/* Vehicle */}
                   <button
                     type="button"
@@ -355,9 +389,35 @@ export default function MoneyFlowchart() {
                     )}
                   </button>
 
+                  {/* Mobile-only connector: vehicle ↓ impacts */}
+                  <svg
+                    width="16"
+                    height="34"
+                    viewBox="0 0 16 34"
+                    className="justify-self-center text-[#4A90E2] md:hidden"
+                    aria-hidden="true"
+                  >
+                    <line
+                      x1="8"
+                      y1="1"
+                      x2="8"
+                      y2="26"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    />
+                    <polyline
+                      points="2,24 8,32 14,24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinejoin="round"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+
                   {/* -> Impacts */}
                   <ul
-                    className="flex flex-col items-start gap-2.5 transition-all duration-300 motion-reduce:transition-none md:translate-x-3 md:opacity-0 md:group-focus-within:translate-x-0 md:group-focus-within:opacity-100 md:group-hover:translate-x-0 md:group-hover:opacity-100"
+                    className="flex flex-wrap justify-center gap-2.5 transition-all duration-300 motion-reduce:transition-none md:translate-x-3 md:flex-col md:flex-nowrap md:items-start md:justify-start md:opacity-0 md:group-focus-within:translate-x-0 md:group-focus-within:opacity-100 md:group-hover:translate-x-0 md:group-hover:opacity-100"
                     aria-label={`Where ${flow.title} goes`}
                   >
                     {flow.destinations.map((d) => (
@@ -366,7 +426,7 @@ export default function MoneyFlowchart() {
                           width="44"
                           height="16"
                           viewBox="0 0 44 16"
-                          className="flex-none text-[#4A90E2]"
+                          className="hidden flex-none text-[#4A90E2] md:block"
                           aria-hidden="true"
                         >
                           <line

@@ -329,6 +329,14 @@ PRESIDENTIAL_COMMITTEES: dict[str, list[str]] = {
     "marco-rubio": ["C00500025"],  # Reclaim America PAC
     "kamala-harris": ["C00744946", "C00838912"],  # Harris Victory Fund / Harris Action Fund
     "robert-f-kennedy-jr": ["C00836916"],  # Team Kennedy
+    # All three share treasurer Sara Diehr and 186 Seven Farms Dr, Daniel
+    # Island SC -- name, treasurer and address all agree.
+    "nikki-haley": ["C00765982", "C00828152", "C00833392"],  # Stand For America PAC / Team Stand For America / SFA Action
+    # Treasurer Thomas Datwyler on both; C00871475 confirmed hers via her own
+    # solicitation page (secure.anedot.com/for-love-of-country). Her House
+    # committee C00497396 is NOT here -- it belongs to her congressional
+    # service and is covered through FORMER_FEDERAL below.
+    "tulsi-gabbard": ["C00871475", "C00878579"],  # For Love of Country / Team Tulsi
 }
 
 
@@ -353,6 +361,10 @@ FORMER_FEDERAL: dict[str, dict] = {
     "kristi-noem": {"icpsr": 21177, "cand_ids": ["H0SD00054"]},     # Rep. SD, 2011-2019
     "rahm-emanuel": {"icpsr": 20323, "cand_ids": ["H2IL05092"]},    # Rep. IL, 2003-2009
     "ron-desantis": {"icpsr": 21318, "cand_ids": ["H2FL00292"]},    # Rep. FL, 2013-2019
+    # VoteView bioname "GABBARD, Tulsi", congresses 113-116, House HI, and
+    # FEC H2HI02508 (Tulsi For Hawai'i). Her 2020 presidential committee is
+    # excluded here for the same reason Rubio's and Harris's are.
+    "tulsi-gabbard": {"icpsr": 21324, "cand_ids": ["H2HI02508"]},   # Rep. HI, 2013-2021
 }
 
 # Cycles spanning the above candidates' congressional service (2003-2025).

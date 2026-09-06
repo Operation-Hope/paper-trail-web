@@ -388,8 +388,9 @@ export default function PresidentialCandidate() {
         )}
 
         <p className="px-2 text-xs text-white/50">
-          Candidate watch list source: TrackAIPAC&apos;s 2028 page, as of July
-          2026. Data updates daily.
+          Candidate watch list sources: TrackAIPAC&apos;s 2028 page, widened
+          with names carried in general 2028 coverage. Verified September 2026.
+          Data updates daily.
         </p>
       </div>
     </div>
