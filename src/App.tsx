@@ -1,4 +1,6 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+// The /react subpath, not /next — this is a Vite + React Router SPA.
+import { Analytics } from '@vercel/analytics/react';
 import { useLayoutEffect } from 'react';
 import Header from './components/Header';
 import PoliticianDetails from './components/PoliticianDetails';
@@ -31,6 +33,8 @@ export default function App() {
             <Route path="/contact" element={<ContactPage />} />
           </Routes>
         </main>
+        {/* Inside Router so client-side route changes register as pageviews. */}
+        <Analytics />
       </div>
     </Router>
   );
